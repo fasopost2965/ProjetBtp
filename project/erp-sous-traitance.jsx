@@ -43,6 +43,57 @@ const DC4_STATUS = {
   attente: { label: 'Non agréé', tone: 'red' },
 };
 
+// DC4 workflow steps
+const DC4_STEPS = [
+  { id: 1, label: 'Dépôt demande', desc: 'Envoi au MOE/MOA avec docs ST' },
+  { id: 2, label: 'Vérification dossier', desc: 'Contrôle ICE, attestations, habilitations' },
+  { id: 3, label: 'Envoi au MOE', desc: 'Transmission du DC4 signé entreprise' },
+  { id: 4, label: 'Agrément MOA', desc: "Signature maître d'ouvrage" },
+  { id: 5, label: 'Notification ST', desc: 'Ordre de service sous-traitant' },
+];
+
+// Map dc4 status to active step index (1-based)
+function dc4ActiveStep(dc4) {
+  if (dc4 === 'agree')   return 6; // all done
+  if (dc4 === 'depose')  return 3; // steps 1,2,3 done, 4,5 pending
+  if (dc4 === 'attente') return 2; // step 1 done, step 2 active, 3-5 pending
+  return 1;
+}
+
+// Situations sous-traitant par contrat
+const ST_SITUATIONS = {
+  'ST-2026/041': [
+    { num: 1, periode: 'Nov 2025', mt_brut: 2_200_000, retenue: 110_000, mt_net: 2_090_000, status: 'paye' },
+    { num: 2, periode: 'Jan 2026', mt_brut: 1_800_000, retenue: 90_000,  mt_net: 1_710_000, status: 'paye' },
+    { num: 3, periode: 'Mar 2026', mt_brut: 1_400_000, retenue: 70_000,  mt_net: 1_330_000, status: 'valide' },
+  ],
+  'ST-2026/038': [
+    { num: 1, periode: 'Feb 2026', mt_brut: 800_000, retenue: 56_000,  mt_net: 744_000, status: 'paye' },
+    { num: 2, periode: 'Avr 2026', mt_brut: 750_000, retenue: 52_500, mt_net: 697_500, status: 'attente' },
+  ],
+};
+
+const SIT_STATUS = {
+  paye:   { label: 'Payé', tone: 'green' },
+  valide: { label: 'Validé', tone: 'blue' },
+  attente:{ label: 'En attente', tone: 'amber' },
+};
+
+// Documents checklist — seed per contract
+const DOCS_LIST = ['Attestation CNSS', 'Attestation fiscale', 'RC professionnelle', 'Habilitations techniques'];
+
+function docsForContrat(c) {
+  // agreed contrats: all valid; non-agreed: one or two missing
+  if (c.dc4 === 'agree') {
+    return DOCS_LIST.map(d => ({ label: d, valid: true }));
+  }
+  if (c.dc4 === 'depose') {
+    return DOCS_LIST.map((d, i) => ({ label: d, valid: i < 3 }));
+  }
+  // attente — two missing
+  return DOCS_LIST.map((d, i) => ({ label: d, valid: i < 2 }));
+}
+
 // =============================================================================
 function SousTraitance() {
   const [tab, setTab] = React.useState('actifs');
@@ -180,8 +231,8 @@ function STList({ rows, selected, onSelect }) {
             <div style={{ minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                 <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: TOKENS.ocreDeep, fontWeight: 500 }}>{c.num}</span>
-                {c.paiementDirect && <span data-tip="Paiement direct au sous-traitant" style={{ padding: '1px 5px', fontSize: 9, fontFamily: 'IBM Plex Mono', background: TOKENS.blueSoft, color: TOKENS.blue, borderRadius: 3 }}>PAIE. DIRECT</span>}
-                {c.alerte && <span data-tip={c.alerte} style={{ width: 15, height: 15, borderRadius: 999, background: TOKENS.redSoft, color: TOKENS.red, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'IBM Plex Mono', fontSize: 9, fontWeight: 700 }}>!</span>}
+                {c.paiementDirect && <span style={{ padding: '1px 5px', fontSize: 9, fontFamily: 'IBM Plex Mono', background: TOKENS.blueSoft, color: TOKENS.blue, borderRadius: 3 }}>PAIE. DIRECT</span>}
+                {c.alerte && <span style={{ width: 15, height: 15, borderRadius: 999, background: TOKENS.redSoft, color: TOKENS.red, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'IBM Plex Mono', fontSize: 9, fontWeight: 700 }}>!</span>}
               </div>
               <div style={{ fontSize: 13, color: TOKENS.ink, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.lot}</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 5, flexWrap: 'wrap' }}>
@@ -215,6 +266,148 @@ function STList({ rows, selected, onSelect }) {
 }
 
 // -----------------------------------------------------------------------------
+function DC4Stepper({ dc4Status }) {
+  const activeStep = dc4ActiveStep(dc4Status);
+
+  return (
+    <div style={{ marginTop: 18 }}>
+      <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, color: TOKENS.ink3, letterSpacing: '0.12em', marginBottom: 12 }}>PROCÉDURE D'AGRÉMENT (DC4)</div>
+      <div style={{ position: 'relative', paddingLeft: 26 }}>
+        {/* Vertical connector line */}
+        <div style={{ position: 'absolute', left: 10, top: 10, bottom: 10, width: 1.5, background: TOKENS.line2 }} />
+        {DC4_STEPS.map((step, i) => {
+          const stepNum = step.id;
+          const isDone    = stepNum < activeStep;
+          const isActive  = stepNum === activeStep && activeStep <= 5;
+          const isPending = stepNum > activeStep;
+
+          let circleColor = TOKENS.line2;
+          let textColor   = TOKENS.ink4;
+          let circleText  = TOKENS.ink4;
+          let circleStroke = TOKENS.line2;
+
+          if (isDone) {
+            circleColor  = TOKENS.green;
+            circleStroke = TOKENS.green;
+            textColor    = TOKENS.ink2;
+            circleText   = TOKENS.paper;
+          } else if (isActive) {
+            circleColor  = TOKENS.amberSoft;
+            circleStroke = TOKENS.amber;
+            textColor    = TOKENS.ink;
+            circleText   = TOKENS.amber;
+          }
+
+          return (
+            <div key={step.id} style={{
+              position: 'relative',
+              paddingBottom: i < DC4_STEPS.length - 1 ? 14 : 0,
+              display: 'flex', alignItems: 'flex-start', gap: 12,
+            }}>
+              {/* Step circle */}
+              <div style={{
+                position: 'absolute', left: -26, top: 0,
+                width: 20, height: 20, borderRadius: 999, flexShrink: 0,
+                background: circleColor,
+                border: `2px solid ${circleStroke}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                zIndex: 1,
+              }}>
+                {isDone
+                  ? <Icon name="check" size={9} stroke={TOKENS.paper} strokeWidth={3} />
+                  : <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 9, fontWeight: 700, color: circleText }}>{step.id}</span>
+                }
+              </div>
+              {/* Step content */}
+              <div style={{ paddingLeft: 0 }}>
+                <div style={{ fontSize: 12.5, color: textColor, fontWeight: isDone || isActive ? 600 : 400 }}>{step.label}</div>
+                <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, color: TOKENS.ink4, marginTop: 1, lineHeight: 1.4 }}>{step.desc}</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// -----------------------------------------------------------------------------
+function STSituationsTable({ contratNum }) {
+  const situations = ST_SITUATIONS[contratNum];
+  if (!situations) return null;
+
+  return (
+    <div style={{ marginTop: 18 }}>
+      <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, color: TOKENS.ink3, letterSpacing: '0.12em', marginBottom: 10 }}>SITUATIONS ST</div>
+      <div style={{ border: `1px solid ${TOKENS.line}`, borderRadius: 6, overflow: 'hidden' }}>
+        <div style={{
+          display: 'grid', gridTemplateColumns: '30px 70px 90px 80px 90px 70px',
+          padding: '8px 12px', background: TOKENS.ink,
+          fontFamily: 'IBM Plex Mono', fontSize: 9, color: TOKENS.bg, letterSpacing: '0.06em', textTransform: 'uppercase',
+        }}>
+          <span>N°</span><span>Période</span><span style={{ textAlign: 'right' }}>Brut</span><span style={{ textAlign: 'right' }}>Retenue</span><span style={{ textAlign: 'right' }}>Net</span><span style={{ textAlign: 'right' }}>Statut</span>
+        </div>
+        {situations.map((s, i) => {
+          const st = SIT_STATUS[s.status];
+          return (
+            <div key={s.num} style={{
+              display: 'grid', gridTemplateColumns: '30px 70px 90px 80px 90px 70px',
+              padding: '9px 12px', borderBottom: i < situations.length - 1 ? `1px solid ${TOKENS.line}` : 'none',
+              alignItems: 'center', background: i % 2 === 0 ? TOKENS.paper : TOKENS.bg,
+            }}>
+              <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: TOKENS.ink3 }}>{s.num}</span>
+              <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, color: TOKENS.ink2 }}>{s.periode}</span>
+              <span style={{ textAlign: 'right', fontFamily: 'IBM Plex Mono', fontSize: 10.5, color: TOKENS.ink }}>{(s.mt_brut / 1000).toFixed(0)}k</span>
+              <span style={{ textAlign: 'right', fontFamily: 'IBM Plex Mono', fontSize: 10.5, color: TOKENS.amber }}>−{(s.retenue / 1000).toFixed(0)}k</span>
+              <span style={{ textAlign: 'right', fontFamily: 'IBM Plex Mono', fontSize: 10.5, fontWeight: 600, color: TOKENS.green }}>{(s.mt_net / 1000).toFixed(0)}k</span>
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <Pill tone={st.tone} dot>{st.label}</Pill>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// -----------------------------------------------------------------------------
+function STDocsChecklist({ c }) {
+  const docs = docsForContrat(c);
+  return (
+    <div style={{ marginTop: 18 }}>
+      <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, color: TOKENS.ink3, letterSpacing: '0.12em', marginBottom: 10 }}>DOCUMENTS ST</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {docs.map((d, i) => (
+          <div key={i} style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '7px 10px',
+            background: d.valid ? TOKENS.greenSoft : TOKENS.redSoft,
+            borderRadius: 5,
+            border: `1px solid ${d.valid ? TOKENS.green + '44' : TOKENS.red + '44'}`,
+          }}>
+            <div style={{
+              width: 18, height: 18, borderRadius: 999, flexShrink: 0,
+              background: d.valid ? TOKENS.green : TOKENS.red,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              {d.valid
+                ? <Icon name="check" size={9} stroke={TOKENS.paper} strokeWidth={2.5} />
+                : <Icon name="x" size={9} stroke={TOKENS.paper} strokeWidth={2.5} />
+              }
+            </div>
+            <span style={{ fontSize: 12, color: d.valid ? TOKENS.ink2 : TOKENS.red, fontWeight: d.valid ? 400 : 500 }}>{d.label}</span>
+            {!d.valid && (
+              <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 9.5, color: TOKENS.red, marginLeft: 'auto' }}>Manquant / expiré</span>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// -----------------------------------------------------------------------------
 function STDetail({ c, onClose }) {
   const st = SOUS_TRAITANTS[c.st];
   const ss = ST_STATUS[c.status];
@@ -222,13 +415,6 @@ function STDetail({ c, onClose }) {
   const retenuMontant = valExec * (c.retenue / 100);
   const payeMontant = c.montant * (c.paye / 100);
   const reste = c.montant - payeMontant;
-
-  const dc4Steps = [
-    { label: 'Contrat ST signé', who: 'Atlas BTP', done: true },
-    { label: 'DC4 transmis au MOA', who: c.conducteur, done: c.dc4 !== 'attente' },
-    { label: 'Agrément maître d\'ouvrage', who: 'MOA', done: c.dc4 === 'agree' },
-    { label: 'Démarrage des travaux', who: c.conducteur, done: c.avancement > 0 },
-  ];
 
   return (
     <Card padding={0} delay={420} style={{ alignSelf: 'flex-start', position: 'sticky', top: 80 }}>
@@ -242,7 +428,7 @@ function STDetail({ c, onClose }) {
         </button>
       </div>
 
-      <div style={{ padding: 18 }}>
+      <div style={{ padding: 18, maxHeight: 'calc(100vh - 180px)', overflowY: 'auto' }}>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           <Pill tone={ss.tone} dot>{ss.label}</Pill>
           <Pill tone={DC4_STATUS[c.dc4].tone}>{DC4_STATUS[c.dc4].label}</Pill>
@@ -285,24 +471,14 @@ function STDetail({ c, onClose }) {
           <FinRow k="Reste à payer" v={fmtMAD(reste) + ' DH'} strong />
         </div>
 
-        {/* DC4 workflow */}
-        <div style={{ marginTop: 18 }}>
-          <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, color: TOKENS.ink3, letterSpacing: '0.12em', marginBottom: 10 }}>PROCÉDURE D'AGRÉMENT (DC4)</div>
-          <div style={{ position: 'relative', paddingLeft: 18 }}>
-            <div style={{ position: 'absolute', left: 7, top: 8, bottom: 8, width: 1, background: TOKENS.line2 }} />
-            {dc4Steps.map((s, i) => (
-              <div key={i} style={{ position: 'relative', paddingBottom: i < dc4Steps.length - 1 ? 12 : 0 }}>
-                <div style={{ position: 'absolute', left: -18, top: 1, width: 15, height: 15, borderRadius: 999,
-                  background: s.done ? TOKENS.green : TOKENS.paper, border: `1.5px solid ${s.done ? TOKENS.green : TOKENS.line2}`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {s.done && <Icon name="check" size={9} stroke={TOKENS.paper} strokeWidth={3} />}
-                </div>
-                <div style={{ fontSize: 12, color: TOKENS.ink2, fontWeight: s.done ? 500 : 400 }}>{s.label}</div>
-                <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, color: TOKENS.ink3, marginTop: 1 }}>{s.who}</div>
-              </div>
-            ))}
-          </div>
-        </div>
+        {/* DC4 Workflow Stepper */}
+        <DC4Stepper dc4Status={c.dc4} />
+
+        {/* Situations ST */}
+        <STSituationsTable contratNum={c.num} />
+
+        {/* Documents checklist */}
+        <STDocsChecklist c={c} />
 
         {/* actions */}
         <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 6 }}>

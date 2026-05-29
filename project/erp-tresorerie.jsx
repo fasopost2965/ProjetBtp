@@ -50,9 +50,49 @@ const CAUTION_TONE = {
   liberable: { label: 'Libérable', tone: 'green' },
 };
 
+// Budget 12 mois — données
+const BUDGET_12M = [
+  { mois: 'Juin 26',  budget_enc: 8200,  real_enc: null, budget_dec: 7100, real_dec: null, note: null },
+  { mois: 'Juil 26', budget_enc: 9100,  real_enc: null, budget_dec: 7800, real_dec: null, note: null },
+  { mois: 'Août 26', budget_enc: 6800,  real_enc: null, budget_dec: 6400, real_dec: null, note: null },
+  { mois: 'Sep 26',  budget_enc: 11200, real_enc: null, budget_dec: 8900, real_dec: null, note: null },
+  { mois: 'Oct 26',  budget_enc: 9800,  real_enc: null, budget_dec: 7500, real_dec: null, note: null },
+  { mois: 'Nov 26',  budget_enc: 8400,  real_enc: null, budget_dec: 8100, real_dec: null, note: null },
+  { mois: 'Déc 26',  budget_enc: 7200,  real_enc: null, budget_dec: 6800, real_dec: null, note: 'Congés annuels' },
+  { mois: 'Jan 27',  budget_enc: 10100, real_enc: null, budget_dec: 8400, real_dec: null, note: null },
+  { mois: 'Fév 27',  budget_enc: 9400,  real_enc: null, budget_dec: 7900, real_dec: null, note: null },
+  { mois: 'Mar 27',  budget_enc: 12100, real_enc: null, budget_dec: 9200, real_dec: null, note: null },
+  { mois: 'Avr 27',  budget_enc: 11400, real_enc: null, budget_dec: 8800, real_dec: null, note: null },
+  { mois: 'Mai 27',  budget_enc: 10200, real_enc: null, budget_dec: 8100, real_dec: null, note: null },
+];
+
+// Effets de commerce
+const EFFETS = [
+  { ref: 'EFF-26-014', benef: 'Sonasid', montant: 840_000, echeance: '2026-06-15', status: 'portefeuille', banque: 'Attijariwafa' },
+  { ref: 'EFF-26-015', benef: 'LafargeHolcim', montant: 620_000, echeance: '2026-06-28', status: 'encaissement', banque: 'Bank of Africa' },
+  { ref: 'EFF-26-012', benef: 'Granulats du Souss', montant: 285_000, echeance: '2026-05-20', status: 'impaye', banque: 'Attijariwafa' },
+  { ref: 'EFF-26-016', benef: 'CIMAR Béton', montant: 420_000, echeance: '2026-07-10', status: 'portefeuille', banque: 'Banque Populaire' },
+];
+
+const EFFET_STATUS = {
+  portefeuille: { label: 'En portefeuille', tone: 'neutral' },
+  encaissement: { label: "Remis à l'encaissement", tone: 'blue' },
+  impaye:       { label: 'Impayé', tone: 'red' },
+};
+
+// Rapprochement bancaire
+const RAPPROCHEMENT = [
+  { date: '2026-05-26', libelle: 'VIR STRS — Situation 4/2026', mt: 3_120_000, compte: 'Bank of Africa', statut: 'rapproche', ecriture: 'FAC-26-042' },
+  { date: '2026-05-24', libelle: 'PRELEVEMENT ATTIJARIWAFA — Crédit mat.', mt: -420_000, compte: 'Attijariwafa', statut: 'rapproche', ecriture: 'BC-26-124' },
+  { date: '2026-05-22', libelle: 'VIR ADM — Décompte CSB-114', mt: 2_680_000, compte: 'Attijariwafa', statut: 'rapproche', ecriture: 'FAC-26-041' },
+  { date: '2026-05-20', libelle: 'PRELEVEMENT CNSS DAMANCOM', mt: -380_000, compte: 'Banque Populaire', statut: 'rapproche', ecriture: 'PAI-26-05' },
+  { date: '2026-05-19', libelle: 'Remise chèque — client Bennani', mt: 840_000, compte: 'Attijariwafa', statut: 'non_rapproche', ecriture: null },
+  { date: '2026-05-15', libelle: 'Virement sortant — réf inconnue', mt: -125_000, compte: 'Bank of Africa', statut: 'ecart', ecriture: null },
+];
+
 // -----------------------------------------------------------------------------
 function Tresorerie() {
-  const [tab, setTab] = React.useState('flux'); // flux | cautions
+  const [tab, setTab] = React.useState('flux'); // flux | cautions | budget | rapprochement
 
   const soldeTotal = COMPTES.reduce((s, c) => s + c.solde, 0);
   const ligneTotal = COMPTES.reduce((s, c) => s + c.decouvert, 0);
@@ -82,18 +122,20 @@ function Tresorerie() {
         </div>
       </div>
 
-      {/* KPI strip */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12 }}>
+      {/* KPI strip — 6 cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12 }}>
         <TresoKpi label="SOLDE DISPONIBLE" value={fmtMAD(soldeTotal)} unit="DH" sub={`+ ${fmtMAD(ligneTotal)} de lignes autorisées`} tone="ink" delay={60} />
         <TresoKpi label="ENCAISSEMENTS PRÉVUS" value={fmtMAD(totalEnc)} unit="DH" sub="sous 4 semaines" tone="green" delay={120} />
         <TresoKpi label="DÉCAISSEMENTS PRÉVUS" value={fmtMAD(totalDec)} unit="DH" sub="paie, achats, traites" tone="amber" delay={180} />
         <TresoKpi label="CAUTIONS ENGAGÉES" value={fmtMAD(cautionsEngagees)} unit="DH" sub={`${CAUTIONS.filter(c => c.status !== 'liberable').length} cautions actives`} tone="blue" delay={240} />
+        <TresoKpi label="DSO CLIENTS" value="68" unit="jours" sub="délai moyen encaissement" tone="ocre" delay={300} />
+        <TresoKpi label="DPO FOURNISSEURS" value="45" unit="jours" sub="délai moyen paiement" tone="neutral" delay={360} />
       </div>
 
       {/* Comptes */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
         {COMPTES.map((c, i) => (
-          <Card key={c.rib} delay={300 + i * 60} padding={18} hoverable>
+          <Card key={c.rib} delay={420 + i * 60} padding={18} hoverable>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
               <div>
                 <div style={{ fontFamily: 'Manrope', fontWeight: 700, fontSize: 13.5, color: TOKENS.ink }}>{c.banque}</div>
@@ -120,7 +162,12 @@ function Tresorerie() {
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 4, borderBottom: `1px solid ${TOKENS.line}` }} className="erp-fade-in">
-        {[['flux', 'Échéancier de trésorerie'], ['cautions', `Cautions bancaires (${CAUTIONS.length})`]].map(([id, label]) => (
+        {[
+          ['flux', 'Échéancier de trésorerie'],
+          ['cautions', `Cautions bancaires (${CAUTIONS.length})`],
+          ['budget', 'Budget 12 mois'],
+          ['rapprochement', 'Rapprochement bancaire'],
+        ].map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)} style={{
             padding: '10px 16px', background: 'transparent', border: 'none',
             borderBottom: `2px solid ${tab === id ? TOKENS.ink : 'transparent'}`,
@@ -130,8 +177,10 @@ function Tresorerie() {
         ))}
       </div>
 
-      {tab === 'flux' && <FluxTable />}
-      {tab === 'cautions' && <CautionsTable />}
+      {tab === 'flux'           && <FluxTable />}
+      {tab === 'cautions'       && <CautionsSection />}
+      {tab === 'budget'         && <BudgetTable />}
+      {tab === 'rapprochement'  && <RapprochementView />}
     </div>
   );
 }
@@ -139,7 +188,7 @@ function Tresorerie() {
 // -----------------------------------------------------------------------------
 function TresoKpi({ label, value, unit, sub, tone, delay }) {
   const dark = tone === 'ink';
-  const colors = { green: TOKENS.green, amber: TOKENS.amber, blue: TOKENS.blue };
+  const colors = { green: TOKENS.green, amber: TOKENS.amber, blue: TOKENS.blue, ocre: TOKENS.ocre };
   const accent = colors[tone];
   return (
     <Card delay={delay} padding={18} style={{ background: dark ? TOKENS.ink : TOKENS.paper, borderColor: dark ? TOKENS.ink : TOKENS.line }}>
@@ -162,8 +211,6 @@ function PreviChart({ soldeStart }) {
   // running balance
   let running = soldeStart / 1000;
   const balances = PREVI.map(p => { running += p.enc - p.dec; return running; });
-  const minBal = Math.min(...balances, soldeStart / 1000);
-  const maxBal = Math.max(...balances, soldeStart / 1000);
 
   return (
     <Card delay={480} padding={0}>
@@ -181,7 +228,7 @@ function PreviChart({ soldeStart }) {
             const decH = (p.dec / maxVal) * 100;
             const low = balances[i] < 1000;
             return (
-              <div key={p.sem} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }} data-tip={`Solde projeté : ${balances[i].toFixed(0)} kDH`}>
+              <div key={p.sem} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
                 <div style={{ display: 'flex', gap: 3, alignItems: 'end', height: '100%', width: '100%', justifyContent: 'center' }}>
                   <div className="erp-progress-fill" style={{ width: 11, height: `${encH}%`, background: TOKENS.green, borderRadius: '2px 2px 0 0', transformOrigin: 'bottom', animationName: 'erpGrowY' }} />
                   <div className="erp-progress-fill" style={{ width: 11, height: `${decH}%`, background: TOKENS.ocreDeep, borderRadius: '2px 2px 0 0', transformOrigin: 'bottom', animationName: 'erpGrowY' }} />
@@ -304,6 +351,241 @@ function CautionsTable() {
         );
       })}
     </Card>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// Cautions + Effets de commerce (combined cautions tab)
+function CautionsSection() {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <CautionsTable />
+      <EffetsTable />
+    </div>
+  );
+}
+
+// -----------------------------------------------------------------------------
+function EffetsTable() {
+  const total = EFFETS.reduce((s, e) => s + e.montant, 0);
+  return (
+    <Card padding={0} delay={600}>
+      <div style={{ padding: '13px 20px', borderBottom: `1px solid ${TOKENS.line}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <h3 style={{ fontFamily: 'Manrope', fontWeight: 700, fontSize: 13.5, margin: 0 }}>Effets de commerce</h3>
+        <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: TOKENS.ink2 }}>Total <strong style={{ color: TOKENS.ink }}>{fmtMAD(total)} DH</strong></span>
+      </div>
+      <div style={{
+        display: 'grid', gridTemplateColumns: '120px 1fr 120px 150px 130px 160px',
+        padding: '10px 20px', background: TOKENS.ink, borderBottom: `1px solid ${TOKENS.line}`,
+        fontFamily: 'IBM Plex Mono', fontSize: 9.5, color: TOKENS.bg, letterSpacing: '0.06em', textTransform: 'uppercase',
+      }}>
+        <span>Réf</span><span>Bénéficiaire</span><span>Échéance</span><span>Banque</span><span style={{ textAlign: 'right' }}>Montant</span><span style={{ textAlign: 'right' }}>Statut</span>
+      </div>
+      {EFFETS.map((e, i) => {
+        const st = EFFET_STATUS[e.status];
+        return (
+          <div key={e.ref} className="erp-row" style={{
+            display: 'grid', gridTemplateColumns: '120px 1fr 120px 150px 130px 160px',
+            padding: '13px 20px', borderBottom: i < EFFETS.length - 1 ? `1px solid ${TOKENS.line}` : 'none', alignItems: 'center',
+          }}>
+            <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 11.5, color: TOKENS.ocreDeep, fontWeight: 500 }}>{e.ref}</div>
+            <div style={{ fontSize: 13, color: TOKENS.ink, fontWeight: 500 }}>{e.benef}</div>
+            <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 11.5, color: e.status === 'impaye' ? TOKENS.red : TOKENS.ink2 }}>{fmtD(e.echeance)}</div>
+            <div style={{ fontSize: 11.5, color: TOKENS.ink3 }}>{e.banque}</div>
+            <div style={{ textAlign: 'right', fontFamily: 'IBM Plex Mono', fontSize: 13, fontWeight: 600, color: TOKENS.ink }}>{fmtMAD(e.montant)}</div>
+            <div style={{ textAlign: 'right', display: 'flex', justifyContent: 'flex-end' }}>
+              <Pill tone={st.tone} dot>{st.label}</Pill>
+            </div>
+          </div>
+        );
+      })}
+    </Card>
+  );
+}
+
+// -----------------------------------------------------------------------------
+function BudgetTable() {
+  const totEnc = BUDGET_12M.reduce((s, r) => s + r.budget_enc, 0);
+  const totDec = BUDGET_12M.reduce((s, r) => s + r.budget_dec, 0);
+  const totExc = totEnc - totDec;
+
+  // Mini SVG cash flow curve
+  const svgW = 560, svgH = 72;
+  const excedents = BUDGET_12M.map(r => r.budget_enc - r.budget_dec);
+  const minE = Math.min(...excedents);
+  const maxE = Math.max(...excedents);
+  const range = maxE - minE || 1;
+  const pts = excedents.map((e, i) => {
+    const x = (i / (excedents.length - 1)) * (svgW - 20) + 10;
+    const y = svgH - 10 - ((e - minE) / range) * (svgH - 20);
+    return `${x},${y}`;
+  });
+  const polyline = pts.join(' ');
+  const zeroY = svgH - 10 - ((0 - minE) / range) * (svgH - 20);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {/* Mini chart */}
+      <Card padding={16} delay={520}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, color: TOKENS.ocreDeep, letterSpacing: '0.12em' }}>EXCÉDENT DE TRÉSORERIE · COURBE 12 MOIS (kDH)</div>
+          <div style={{ display: 'flex', gap: 16 }}>
+            <Legend color={TOKENS.green} label="Enc. budget" />
+            <Legend color={TOKENS.red} label="Déc. budget" />
+            <Legend color={TOKENS.ink} label="Excédent" line />
+          </div>
+        </div>
+        <svg width="100%" height={svgH} viewBox={`0 0 ${svgW} ${svgH}`} style={{ overflow: 'visible' }}>
+          {/* Zero line */}
+          {minE < 0 && (
+            <line x1="10" y1={zeroY} x2={svgW - 10} y2={zeroY}
+              stroke={TOKENS.line2} strokeWidth={1} strokeDasharray="4,3" />
+          )}
+          {/* Area fill */}
+          <polyline
+            points={`10,${svgH - 10} ${polyline} ${svgW - 10},${svgH - 10}`}
+            fill={`${TOKENS.green}22`} stroke="none"
+          />
+          {/* Curve */}
+          <polyline points={polyline} fill="none" stroke={TOKENS.ink} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+          {/* Points */}
+          {pts.map((pt, i) => {
+            const [x, y] = pt.split(',').map(Number);
+            const exc = excedents[i];
+            return (
+              <circle key={i} cx={x} cy={y} r={3.5}
+                fill={exc >= 0 ? TOKENS.green : TOKENS.red}
+                stroke={TOKENS.paper} strokeWidth={1.5} />
+            );
+          })}
+        </svg>
+        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${BUDGET_12M.length}, 1fr)`, marginTop: 6 }}>
+          {BUDGET_12M.map((r, i) => (
+            <div key={i} style={{ textAlign: 'center', fontFamily: 'IBM Plex Mono', fontSize: 9, color: TOKENS.ink4 }}>{r.mois.split(' ')[0]}</div>
+          ))}
+        </div>
+      </Card>
+
+      {/* Table */}
+      <Card padding={0} delay={580}>
+        <div style={{
+          display: 'grid', gridTemplateColumns: '100px 120px 120px 130px 80px',
+          padding: '10px 20px', background: TOKENS.ink, borderBottom: `1px solid ${TOKENS.line}`,
+          fontFamily: 'IBM Plex Mono', fontSize: 9.5, color: TOKENS.bg, letterSpacing: '0.06em', textTransform: 'uppercase',
+        }}>
+          <span>Mois</span>
+          <span style={{ textAlign: 'right' }}>Enc. budget</span>
+          <span style={{ textAlign: 'right' }}>Déc. budget</span>
+          <span style={{ textAlign: 'right' }}>Excédent budget</span>
+          <span>Notes</span>
+        </div>
+        {BUDGET_12M.map((r, i) => {
+          const exc = r.budget_enc - r.budget_dec;
+          const excPos = exc >= 0;
+          return (
+            <div key={i} className="erp-row" style={{
+              display: 'grid', gridTemplateColumns: '100px 120px 120px 130px 80px',
+              padding: '11px 20px', borderBottom: i < BUDGET_12M.length - 1 ? `1px solid ${TOKENS.line}` : 'none', alignItems: 'center',
+            }}>
+              <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 12, color: TOKENS.ink, fontWeight: 500 }}>{r.mois}</span>
+              <span style={{ textAlign: 'right', fontFamily: 'IBM Plex Mono', fontSize: 12, color: TOKENS.green }}>{r.budget_enc.toLocaleString('fr-FR')} k</span>
+              <span style={{ textAlign: 'right', fontFamily: 'IBM Plex Mono', fontSize: 12, color: TOKENS.ink2 }}>{r.budget_dec.toLocaleString('fr-FR')} k</span>
+              <span style={{ textAlign: 'right', fontFamily: 'IBM Plex Mono', fontSize: 12.5, fontWeight: 600, color: excPos ? TOKENS.green : TOKENS.red }}>
+                {excPos ? '+' : ''}{exc.toLocaleString('fr-FR')} k
+              </span>
+              <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 9.5, color: TOKENS.ink3 }}>{r.note || '—'}</span>
+            </div>
+          );
+        })}
+        {/* Total row */}
+        <div style={{
+          display: 'grid', gridTemplateColumns: '100px 120px 120px 130px 80px',
+          padding: '12px 20px', background: TOKENS.bgWarm, borderTop: `2px solid ${TOKENS.line2}`, alignItems: 'center',
+        }}>
+          <span style={{ fontFamily: 'Manrope', fontWeight: 700, fontSize: 12, color: TOKENS.ink }}>TOTAL</span>
+          <span style={{ textAlign: 'right', fontFamily: 'IBM Plex Mono', fontSize: 12.5, fontWeight: 600, color: TOKENS.green }}>{totEnc.toLocaleString('fr-FR')} k</span>
+          <span style={{ textAlign: 'right', fontFamily: 'IBM Plex Mono', fontSize: 12.5, fontWeight: 600, color: TOKENS.ink2 }}>{totDec.toLocaleString('fr-FR')} k</span>
+          <span style={{ textAlign: 'right', fontFamily: 'IBM Plex Mono', fontSize: 13, fontWeight: 700, color: totExc >= 0 ? TOKENS.green : TOKENS.red }}>
+            {totExc >= 0 ? '+' : ''}{totExc.toLocaleString('fr-FR')} k
+          </span>
+          <span />
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+// -----------------------------------------------------------------------------
+function RapprochementView() {
+  const nbRapproche   = RAPPROCHEMENT.filter(r => r.statut === 'rapproche').length;
+  const nbNonRapproche = RAPPROCHEMENT.filter(r => r.statut === 'non_rapproche').length;
+  const nbEcart       = RAPPROCHEMENT.filter(r => r.statut === 'ecart').length;
+
+  const statutConf = {
+    rapproche:     { label: 'Rapproché', tone: 'green' },
+    non_rapproche: { label: 'Non rapproché', tone: 'amber' },
+    ecart:         { label: 'Écart', tone: 'red' },
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {/* Summary strip */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+        <Card padding={16} delay={520} style={{ borderLeft: `3px solid ${TOKENS.green}` }}>
+          <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 9.5, color: TOKENS.ink3, letterSpacing: '0.12em', marginBottom: 6 }}>RAPPROCHÉS</div>
+          <div style={{ fontFamily: 'Manrope', fontWeight: 700, fontSize: 28, color: TOKENS.green }}>{nbRapproche}</div>
+          <div style={{ fontSize: 11, color: TOKENS.ink3, marginTop: 4 }}>lignes reconciliées</div>
+        </Card>
+        <Card padding={16} delay={570} style={{ borderLeft: `3px solid ${TOKENS.amber}` }}>
+          <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 9.5, color: TOKENS.ink3, letterSpacing: '0.12em', marginBottom: 6 }}>NON RAPPROCHÉS</div>
+          <div style={{ fontFamily: 'Manrope', fontWeight: 700, fontSize: 28, color: TOKENS.amber }}>{nbNonRapproche}</div>
+          <div style={{ fontSize: 11, color: TOKENS.ink3, marginTop: 4 }}>à identifier</div>
+        </Card>
+        <Card padding={16} delay={620} style={{ borderLeft: `3px solid ${TOKENS.red}` }}>
+          <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 9.5, color: TOKENS.ink3, letterSpacing: '0.12em', marginBottom: 6 }}>ÉCARTS</div>
+          <div style={{ fontFamily: 'Manrope', fontWeight: 700, fontSize: 28, color: TOKENS.red }}>{nbEcart}</div>
+          <div style={{ fontSize: 11, color: TOKENS.ink3, marginTop: 4 }}>à investiguer</div>
+        </Card>
+      </div>
+
+      {/* Table */}
+      <Card padding={0} delay={660}>
+        <div style={{ padding: '13px 20px', borderBottom: `1px solid ${TOKENS.line}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <h3 style={{ fontFamily: 'Manrope', fontWeight: 700, fontSize: 13.5, margin: 0 }}>Relevé bancaire vs écritures comptables</h3>
+          <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 10.5, color: TOKENS.ink3 }}>Période · Mai 2026</span>
+        </div>
+        <div style={{
+          display: 'grid', gridTemplateColumns: '100px minmax(0,1fr) 120px 140px 140px 130px',
+          padding: '10px 20px', background: TOKENS.ink, borderBottom: `1px solid ${TOKENS.line}`,
+          fontFamily: 'IBM Plex Mono', fontSize: 9.5, color: TOKENS.bg, letterSpacing: '0.06em', textTransform: 'uppercase',
+        }}>
+          <span>Date</span><span>Libellé</span><span style={{ textAlign: 'right' }}>Montant</span><span>Compte</span><span>Écriture</span><span style={{ textAlign: 'right' }}>Statut</span>
+        </div>
+        {RAPPROCHEMENT.map((r, i) => {
+          const st = statutConf[r.statut];
+          const pos = r.mt >= 0;
+          return (
+            <div key={i} className="erp-row" style={{
+              display: 'grid', gridTemplateColumns: '100px minmax(0,1fr) 120px 140px 140px 130px',
+              padding: '13px 20px', borderBottom: i < RAPPROCHEMENT.length - 1 ? `1px solid ${TOKENS.line}` : 'none', alignItems: 'center',
+            }}>
+              <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: TOKENS.ink2 }}>{fmtD(r.date)}</span>
+              <span style={{ fontSize: 12.5, color: TOKENS.ink, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.libelle}</span>
+              <span style={{ textAlign: 'right', fontFamily: 'IBM Plex Mono', fontSize: 12.5, fontWeight: 600, color: pos ? TOKENS.green : TOKENS.red }}>
+                {pos ? '+' : ''}{fmtMAD(Math.abs(r.mt))}
+              </span>
+              <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 10.5, color: TOKENS.ink3 }}>{r.compte}</span>
+              <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: r.ecriture ? TOKENS.ocreDeep : TOKENS.amber, fontWeight: r.ecriture ? 500 : 400 }}>
+                {r.ecriture || '— À identifier'}
+              </span>
+              <div style={{ textAlign: 'right', display: 'flex', justifyContent: 'flex-end' }}>
+                <Pill tone={st.tone} dot>{st.label}</Pill>
+              </div>
+            </div>
+          );
+        })}
+      </Card>
+    </div>
   );
 }
 

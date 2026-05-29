@@ -152,6 +152,7 @@ function SituationsList({ onOpen, onNew }) {
 function SituationEditor({ onPreview, onBack }) {
   const [rows, setRows] = React.useState(BPU);
   const [activeLot, setActiveLot] = React.useState('all');
+  const [factureConfirm, setFactureConfirm] = React.useState(false);
 
   const update = (id, qMonth) => {
     setRows(r => r.map(x => x.id === id ? { ...x, qMonth: Math.max(0, qMonth) } : x));
@@ -207,6 +208,10 @@ function SituationEditor({ onPreview, onBack }) {
           <Button onClick={onPreview} icon={<Icon name="doc" size={13} stroke={TOKENS.ink2} />}>Aperçu document</Button>
           <Button variant="primary" iconRight={<Icon name="arrowRight" size={13} stroke={TOKENS.bg} />}>
             Envoyer pour signature
+          </Button>
+          <Button variant="ocre" icon={<Icon name="invoice" size={13} stroke={TOKENS.ocreDeep} />}
+            onClick={() => setFactureConfirm(true)}>
+            Émettre facture
           </Button>
         </div>
       </div>
@@ -357,7 +362,54 @@ function SituationEditor({ onPreview, onBack }) {
             ))}
           </tbody>
         </table>
+        <div style={{ padding: '14px 22px', borderTop: `2px solid ${TOKENS.line}`, background: TOKENS.ocreSoft, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ fontSize: 12.5, color: TOKENS.ink2 }}>
+            La situation est prête à être facturée. Cliquez pour créer la facture correspondante.
+          </div>
+          <Button variant="ocre" icon={<Icon name="invoice" size={13} stroke={TOKENS.ocreDeep} />}
+            onClick={() => setFactureConfirm(true)}>
+            Émettre la facture
+          </Button>
+        </div>
       </Card>
+
+      {factureConfirm && (
+        <window.Modal open title="Émettre la facture" subtitle={SIT_HEADER.numero + ' — ' + SIT_HEADER.chantier}
+          width={480} onClose={() => setFactureConfirm(false)}
+          footer={
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <Button onClick={() => setFactureConfirm(false)}>Annuler</Button>
+              <Button variant="primary" icon={<Icon name="invoice" size={13} stroke={TOKENS.bg} />}
+                onClick={() => {
+                  setFactureConfirm(false);
+                  window.toast('Facture FA-26-039 créée depuis ' + SIT_HEADER.numero, 'success', fmtMAD(netTTC) + ' DH TTC');
+                  setTimeout(() => { window.location.hash = 'factures'; }, 800);
+                }}>
+                Créer la facture
+              </Button>
+            </div>
+          }>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '4px 0' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              {[
+                ['Client', SIT_HEADER.client],
+                ['Chantier', SIT_HEADER.chantier],
+                ['Période', SIT_HEADER.periode],
+                ['Marché', SIT_HEADER.marche],
+              ].map(([k, v]) => (
+                <div key={k} style={{ padding: '10px 12px', background: TOKENS.bg, borderRadius: 5 }}>
+                  <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 9, color: TOKENS.ink3, letterSpacing: '0.12em', marginBottom: 4 }}>{k.toUpperCase()}</div>
+                  <div style={{ fontSize: 12.5, color: TOKENS.ink, fontWeight: 500 }}>{v}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ padding: '14px 16px', background: TOKENS.ink, borderRadius: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, color: TOKENS.ocre, letterSpacing: '0.12em' }}>MONTANT FACTURE TTC</span>
+              <span style={{ fontFamily: 'Manrope', fontWeight: 700, fontSize: 22, color: TOKENS.bg, letterSpacing: '-0.025em' }}>{fmtMAD(netTTC)} DH</span>
+            </div>
+          </div>
+        </window.Modal>
+      )}
     </div>
   );
 }

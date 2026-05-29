@@ -97,6 +97,7 @@
 
 <script type="text/babel" src="erp-shared.jsx"></script>
 <script type="text/babel" src="erp-system.jsx"></script>
+<script type="text/babel" src="erp-store.jsx"></script>
 <script type="text/babel" src="erp-modals-new.jsx"></script>
 <script type="text/babel" src="erp-doc-preview.jsx"></script>
 <script type="text/babel" src="erp-clients.jsx"></script>
@@ -124,7 +125,7 @@
 <script type="text/babel" src="erp-users.jsx"></script>
 <script type="text/babel" src="erp-settings.jsx"></script>
 <script type="text/babel">
-  const { Shell, StubScreen, Dashboard, FicheChantier, Etudes, Situations, Rapports, Chantiers, Pointage, Achats, Facturation, Planning, SousTraitance, Stock, Parc, Paie, Tresorerie, Marches, Ged, Users, Settings, Clients, NotificationProvider, ToastHost, NAV_GROUPS } = window;
+  const { Shell, StubScreen, Dashboard, FicheChantier, Etudes, Situations, Rapports, Chantiers, Pointage, Achats, Facturation, Planning, SousTraitance, Stock, Parc, Paie, Tresorerie, Marches, Ged, Users, Settings, Clients, NotificationProvider, ToastHost, NAV_GROUPS, StoreProvider } = window;
 
   const ROUTES = {
     dashboard: { breadcrumb: ['Atlas BTP', 'Tableau de bord'], render: () => <Dashboard /> },
@@ -179,11 +180,15 @@
     );
   }
 
+  const StoreWrapper = StoreProvider || (({ children }) => children);
+
   ReactDOM.createRoot(document.getElementById('root')).render(
-    <NotificationProvider>
-      <App />
-      <ToastHost />
-    </NotificationProvider>
+    <StoreWrapper>
+      <NotificationProvider>
+        <App />
+        <ToastHost />
+      </NotificationProvider>
+    </StoreWrapper>
   );
 </script>
 </body>

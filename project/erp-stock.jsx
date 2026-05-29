@@ -1,4 +1,4 @@
-/* global React, TOKENS, Icon, Pill, Card, CardHead, Progress, Button, fmtMAD */
+/* global React, TOKENS, Icon, Pill, Card, CardHead, Progress, Button, fmtMAD, Modal, FieldGroup, TextInput, Select, TextArea */
 // =============================================================================
 // ERP — Stock / Magasin
 // Dépôt central + magasins de chantier · seuils de réappro · mouvements
@@ -51,6 +51,10 @@ const MOV_TONE = {
   inventaire: { label: 'Inventaire', tone: 'red', sign: 'Δ' },
 };
 
+const CHANTIER_CODES = ['CSB-114', 'RBT-208', 'TNG-061', 'AGD-033', 'MEK-019', 'OUJ-007'];
+
+const MOTIF_ECART = ['Erreur de comptage', 'Vol', 'Casse', 'Perte', 'Erreur de saisie', 'Autre'];
+
 const artStatus = (a) => a.stock === 0 ? 'rupture' : a.stock <= a.seuil ? 'bas' : 'ok';
 
 // =============================================================================
@@ -59,6 +63,12 @@ function Stock() {
   const [cat, setCat] = React.useState('all');
   const [statusFilter, setStatusFilter] = React.useState('all');
   const [q, setQ] = React.useState('');
+  const [mouvements, setMouvements] = React.useState(MOUVEMENTS.slice());
+
+  // Modal open states
+  const [bsSortieOpen, setBsSortieOpen] = React.useState(false);
+  const [transfertOpen, setTransfertOpen] = React.useState(false);
+  const [inventaireOpen, setInventaireOpen] = React.useState(false);
 
   let rows = ARTICLES.slice();
   if (depot !== 'all') rows = rows.filter(a => a.depot === depot);
@@ -74,10 +84,73 @@ function Stock() {
   const valeur = base.reduce((s, a) => s + a.stock * a.pu, 0);
   const sousSeuil = base.filter(a => artStatus(a) === 'bas').length;
   const ruptures = base.filter(a => artStatus(a) === 'rupture').length;
-  const movToday = MOUVEMENTS.filter(m => m.date.startsWith('28/05')).length;
+  const movToday = mouvements.filter(m => m.date.startsWith('28/05')).length;
+
+  // Articles en rupture pour la bannière d'alerte
+  const alertArticles = base.filter(a => artStatus(a) === 'rupture');
+  const alertBas = base.filter(a => artStatus(a) === 'bas');
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
+
+      {/* ── Alertes banner (visible seulement si ruptures ou sous-seuil) ── */}
+      {(alertArticles.length > 0 || alertBas.length > 0) && (
+        <div className="erp-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {alertArticles.length > 0 && (
+            <div style={{
+              padding: '12px 18px',
+              background: TOKENS.redSoft,
+              border: `1px solid ${TOKENS.red}`,
+              borderRadius: 8,
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Icon name="alert" size={16} stroke={TOKENS.red} />
+                <div>
+                  <span style={{ fontFamily: 'IBM Plex Sans', fontSize: 13, fontWeight: 600, color: TOKENS.red }}>
+                    {alertArticles.length} article{alertArticles.length > 1 ? 's' : ''} en rupture de stock
+                  </span>
+                  <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: TOKENS.red, marginLeft: 10, opacity: 0.8 }}>
+                    {alertArticles.map(a => a.ref).join(' · ')}
+                  </span>
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant="ocre"
+                icon={<Icon name="purchase" size={12} stroke={TOKENS.ocreDeep} />}
+                onClick={() => window.toast('Bon de commande généré', 'success', `${alertArticles.length} référence${alertArticles.length > 1 ? 's' : ''} en rupture`)}
+              >
+                Générer BC
+              </Button>
+            </div>
+          )}
+          {alertBas.length > 0 && (
+            <div style={{
+              padding: '10px 18px',
+              background: TOKENS.amberSoft,
+              border: `1px solid ${TOKENS.amber}`,
+              borderRadius: 8,
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Icon name="warning" size={15} stroke={TOKENS.amber} />
+                <span style={{ fontFamily: 'IBM Plex Sans', fontSize: 13, fontWeight: 500, color: 'oklch(0.45 0.10 75)' }}>
+                  {alertBas.length} article{alertBas.length > 1 ? 's' : ''} sous le seuil de réapprovisionnement
+                </span>
+              </div>
+              <Button
+                size="sm"
+                onClick={() => window.toast('Bon de commande généré', 'success', `${alertBas.length} référence${alertBas.length > 1 ? 's' : ''} sous seuil`)}
+                icon={<Icon name="purchase" size={12} stroke={TOKENS.ink2} />}
+              >
+                Générer BC
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Header */}
       <div className="erp-fade-in" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap' }}>
         <div>
@@ -89,8 +162,24 @@ function Stock() {
           </h1>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <Button icon={<Icon name="refresh" size={13} stroke={TOKENS.ink2} />}>Inventaire</Button>
-          <Button icon={<Icon name="truck" size={13} stroke={TOKENS.ink2} />}>Bon de sortie</Button>
+          <Button
+            icon={<Icon name="refresh" size={13} stroke={TOKENS.ink2} />}
+            onClick={() => setInventaireOpen(true)}
+          >
+            Inventaire
+          </Button>
+          <Button
+            icon={<Icon name="arrowRight" size={13} stroke={TOKENS.ink2} />}
+            onClick={() => setTransfertOpen(true)}
+          >
+            Transfert
+          </Button>
+          <Button
+            icon={<Icon name="truck" size={13} stroke={TOKENS.ink2} />}
+            onClick={() => setBsSortieOpen(true)}
+          >
+            Bon de sortie
+          </Button>
           <Button variant="primary" icon={<Icon name="plus" size={13} stroke={TOKENS.bg} />}>Réceptionner</Button>
         </div>
       </div>
@@ -144,8 +233,31 @@ function Stock() {
         </div>
 
         {/* Movements feed */}
-        <MovementsFeed depot={depot} />
+        <MovementsFeed depot={depot} mouvements={mouvements} />
       </div>
+
+      {/* ── Modals ── */}
+      <BonSortieModal
+        open={bsSortieOpen}
+        onClose={() => setBsSortieOpen(false)}
+        onConfirm={(mouv) => {
+          setMouvements(prev => [mouv, ...prev]);
+          setBsSortieOpen(false);
+        }}
+      />
+      <TransfertModal
+        open={transfertOpen}
+        onClose={() => setTransfertOpen(false)}
+        onConfirm={() => setTransfertOpen(false)}
+      />
+      <InventaireModal
+        open={inventaireOpen}
+        onClose={() => setInventaireOpen(false)}
+        onConfirm={(mouvs) => {
+          setMouvements(prev => [...mouvs, ...prev]);
+          setInventaireOpen(false);
+        }}
+      />
     </div>
   );
 }
@@ -249,8 +361,9 @@ function ArticleTable({ rows }) {
 }
 
 // -----------------------------------------------------------------------------
-function MovementsFeed({ depot }) {
-  let movs = MOUVEMENTS.slice();
+function MovementsFeed({ depot, mouvements }) {
+  const allMovs = mouvements || MOUVEMENTS;
+  let movs = allMovs.slice();
   if (depot !== 'all') movs = movs.filter(m => m.depot === depot);
   return (
     <Card padding={0} delay={420} style={{ position: 'sticky', top: 80 }}>
@@ -299,6 +412,413 @@ function MovementsFeed({ depot }) {
         </a>
       </div>
     </Card>
+  );
+}
+
+// =============================================================================
+// MODAL — Bon de sortie
+// =============================================================================
+function BonSortieModal({ open, onClose, onConfirm }) {
+  const [depotSrc, setDepotSrc] = React.useState('CASA');
+  const [chantierDest, setChantierDest] = React.useState(CHANTIER_CODES[0]);
+  const [lignes, setLignes] = React.useState([{ ref: '', qte: 1 }]);
+  const [motif, setMotif] = React.useState('');
+  const [demandeur, setDemandeur] = React.useState('');
+  const [date, setDate] = React.useState('');
+  const [bsNum] = React.useState(() => String(Math.floor(Math.random() * 900) + 319));
+
+  const addLigne = () => setLignes(prev => [...prev, { ref: '', qte: 1 }]);
+  const removeLigne = (i) => setLignes(prev => prev.filter((_, idx) => idx !== i));
+  const updateLigne = (i, field, val) => setLignes(prev => prev.map((l, idx) => idx === i ? { ...l, [field]: val } : l));
+
+  const handleConfirm = () => {
+    const firstRef = lignes[0]?.ref;
+    const art = ARTICLES.find(a => a.ref === firstRef);
+    const today = new Date();
+    const dd = String(today.getDate()).padStart(2, '0');
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const mouv = {
+      type: 'sortie',
+      ref: firstRef || '—',
+      design: art ? art.design : firstRef,
+      qte: Number(lignes[0]?.qte) || 1,
+      unite: art ? art.unite : 'u',
+      depot: depotSrc,
+      dest: chantierDest + (motif ? ' · ' + motif : ''),
+      doc: 'BS-2026/' + bsNum,
+      date: `${dd}/${mm} · ${String(today.getHours()).padStart(2,'0')}:${String(today.getMinutes()).padStart(2,'0')}`,
+      who: demandeur || 'Magasin',
+    };
+    onConfirm(mouv);
+    window.toast('Bon de sortie BS-' + bsNum + ' enregistré', 'success', `${lignes.length} article${lignes.length > 1 ? 's' : ''} · ${DEPOTS[depotSrc]?.short} → ${chantierDest}`);
+  };
+
+  const depotOptions = Object.entries(DEPOTS).map(([id, d]) => [id, d.short]);
+  const articleOptions = [['', '— Sélectionner —'], ...ARTICLES.map(a => [a.ref, `${a.ref} · ${a.design.slice(0, 35)}`])];
+  const chantierOptions = CHANTIER_CODES;
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="Bon de sortie"
+      subtitle={`BS-2026/${bsNum} · Sortie de stock vers chantier`}
+      width={640}
+      footer={
+        <>
+          <Button onClick={onClose}>Annuler</Button>
+          <Button variant="primary" onClick={handleConfirm} icon={<Icon name="check" size={13} stroke={TOKENS.bg} />}>
+            Enregistrer le bon
+          </Button>
+        </>
+      }
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+          <FieldGroup label="Dépôt source" required>
+            <Select value={depotSrc} onChange={setDepotSrc} options={depotOptions} />
+          </FieldGroup>
+          <FieldGroup label="Chantier destination" required>
+            <Select value={chantierDest} onChange={setChantierDest} options={chantierOptions} />
+          </FieldGroup>
+        </div>
+
+        <FieldGroup label="Articles" required>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{
+              display: 'grid', gridTemplateColumns: '1fr 100px 28px',
+              gap: 8, fontFamily: 'IBM Plex Mono', fontSize: 9.5, color: TOKENS.ink3,
+              letterSpacing: '0.1em', textTransform: 'uppercase', padding: '0 4px', marginBottom: 4,
+            }}>
+              <span>Article</span><span>Quantité</span><span />
+            </div>
+            {lignes.map((l, i) => (
+              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 100px 28px', gap: 8, alignItems: 'center' }}>
+                <Select value={l.ref} onChange={v => updateLigne(i, 'ref', v)} options={articleOptions} />
+                <input
+                  type="number"
+                  min={1}
+                  value={l.qte}
+                  onChange={e => updateLigne(i, 'qte', e.target.value)}
+                  style={{
+                    height: 38, padding: '0 10px',
+                    border: `1px solid ${TOKENS.line2}`, borderRadius: 6,
+                    fontFamily: 'IBM Plex Mono', fontSize: 13, color: TOKENS.ink,
+                    background: TOKENS.paper, textAlign: 'right', outline: 'none', width: '100%',
+                  }}
+                />
+                <button
+                  onClick={() => removeLigne(i)}
+                  disabled={lignes.length === 1}
+                  style={{
+                    width: 28, height: 28, borderRadius: 5,
+                    background: 'transparent', border: `1px solid ${TOKENS.line2}`,
+                    cursor: lignes.length === 1 ? 'not-allowed' : 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    opacity: lignes.length === 1 ? 0.3 : 1,
+                  }}
+                >
+                  <Icon name="x" size={12} stroke={TOKENS.ink3} />
+                </button>
+              </div>
+            ))}
+            <button
+              onClick={addLigne}
+              style={{
+                height: 34, border: `1px dashed ${TOKENS.line2}`, borderRadius: 6,
+                background: 'transparent', cursor: 'pointer',
+                fontFamily: 'IBM Plex Sans', fontSize: 12.5, color: TOKENS.ink3,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              }}
+            >
+              <Icon name="plus" size={12} stroke={TOKENS.ink3} />
+              Ajouter un article
+            </button>
+          </div>
+        </FieldGroup>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+          <FieldGroup label="Demandeur" required>
+            <TextInput value={demandeur} onChange={setDemandeur} placeholder="Nom du demandeur" />
+          </FieldGroup>
+          <FieldGroup label="Date">
+            <TextInput value={date} onChange={setDate} type="date" />
+          </FieldGroup>
+        </div>
+
+        <FieldGroup label="Motif / destination">
+          <TextInput value={motif} onChange={setMotif} placeholder="Ex: Lot voiles R+3, ferraillage dalle…" />
+        </FieldGroup>
+      </div>
+    </Modal>
+  );
+}
+
+// =============================================================================
+// MODAL — Transfert inter-dépôts
+// =============================================================================
+function TransfertModal({ open, onClose, onConfirm }) {
+  const [depotSrc,  setDepotSrc]  = React.useState('CASA');
+  const [depotDest, setDepotDest] = React.useState('CSB-114');
+  const [article,   setArticle]   = React.useState('');
+  const [qte,       setQte]       = React.useState(1);
+  const [motif,     setMotif]     = React.useState('');
+  const [btNum] = React.useState(() => String(Math.floor(Math.random() * 900) + 62));
+
+  const depotOptions = Object.entries(DEPOTS).map(([id, d]) => [id, d.short]);
+  const articleOptions = [['', '— Sélectionner —'], ...ARTICLES.map(a => [a.ref, `${a.ref} · ${a.design.slice(0, 35)}`])];
+
+  const handleConfirm = () => {
+    onConfirm();
+    const srcLabel = DEPOTS[depotSrc]?.short || depotSrc;
+    const destLabel = DEPOTS[depotDest]?.short || depotDest;
+    window.toast(`Transfert BT-2026/${btNum} enregistré`, 'success', `${srcLabel} → ${destLabel}`);
+  };
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="Transfert inter-dépôts"
+      subtitle={`BT-2026/${btNum} · Mouvement entre magasins`}
+      width={560}
+      footer={
+        <>
+          <Button onClick={onClose}>Annuler</Button>
+          <Button variant="primary" onClick={handleConfirm} icon={<Icon name="check" size={13} stroke={TOKENS.bg} />}>
+            Confirmer le transfert
+          </Button>
+        </>
+      }
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+          <FieldGroup label="Dépôt source" required>
+            <Select value={depotSrc} onChange={setDepotSrc} options={depotOptions} />
+          </FieldGroup>
+          <FieldGroup label="Dépôt destination" required>
+            <Select value={depotDest} onChange={setDepotDest} options={depotOptions} />
+          </FieldGroup>
+        </div>
+
+        {depotSrc === depotDest && (
+          <div style={{
+            padding: '10px 14px', background: TOKENS.amberSoft,
+            border: `1px solid ${TOKENS.amber}`, borderRadius: 6,
+            fontSize: 12, color: 'oklch(0.45 0.10 75)',
+            display: 'flex', alignItems: 'center', gap: 8,
+          }}>
+            <Icon name="warning" size={13} stroke={TOKENS.amber} />
+            Le dépôt source et destination sont identiques.
+          </div>
+        )}
+
+        <FieldGroup label="Article" required>
+          <Select value={article} onChange={setArticle} options={articleOptions} />
+        </FieldGroup>
+
+        <FieldGroup label="Quantité" required>
+          <input
+            type="number"
+            min={1}
+            value={qte}
+            onChange={e => setQte(e.target.value)}
+            style={{
+              width: '100%', height: 38, padding: '0 12px',
+              border: `1px solid ${TOKENS.line2}`, borderRadius: 6,
+              fontFamily: 'IBM Plex Mono', fontSize: 13, color: TOKENS.ink,
+              background: TOKENS.paper, outline: 'none',
+            }}
+          />
+        </FieldGroup>
+
+        <FieldGroup label="Motif du transfert">
+          <TextInput value={motif} onChange={setMotif} placeholder="Ex: Réallocation besoins chantier, rupture de stock…" />
+        </FieldGroup>
+
+        {depotSrc && depotDest && depotSrc !== depotDest && (
+          <div style={{
+            padding: '12px 14px', background: TOKENS.blueSoft,
+            border: `1px solid ${TOKENS.blue}`, borderRadius: 6,
+            display: 'flex', alignItems: 'center', gap: 10, fontSize: 12.5, color: TOKENS.blue,
+          }}>
+            <Icon name="arrowRight" size={14} stroke={TOKENS.blue} />
+            <span>
+              <b>{DEPOTS[depotSrc]?.short}</b> → <b>{DEPOTS[depotDest]?.short}</b>
+              {qte > 0 && <span style={{ fontFamily: 'IBM Plex Mono', marginLeft: 8, fontSize: 11 }}>· {qte} unité{qte > 1 ? 's' : ''}</span>}
+            </span>
+          </div>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
+// =============================================================================
+// MODAL — Inventaire physique
+// =============================================================================
+function InventaireModal({ open, onClose, onConfirm }) {
+  const [lignes, setLignes] = React.useState(() =>
+    ARTICLES.map(a => ({ ref: a.ref, design: a.design, theorique: a.stock, reel: a.stock, motif: '', unite: a.unite, depot: a.depot }))
+  );
+  const [invNum] = React.useState(() => String(Math.floor(Math.random() * 900) + 13));
+
+  const updateReel = (ref, val) =>
+    setLignes(prev => prev.map(l => l.ref === ref ? { ...l, reel: val === '' ? '' : Number(val) } : l));
+  const updateMotif = (ref, val) =>
+    setLignes(prev => prev.map(l => l.ref === ref ? { ...l, motif: val } : l));
+
+  const lignesAvecEcart = lignes.filter(l => Number(l.reel) !== l.theorique);
+
+  const handleConfirm = () => {
+    const today = new Date();
+    const dd = String(today.getDate()).padStart(2, '0');
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dateStr = `${dd}/${mm} · ${String(today.getHours()).padStart(2,'0')}:${String(today.getMinutes()).padStart(2,'0')}`;
+
+    const mouvements = lignesAvecEcart.map(l => {
+      const ecart = Number(l.reel) - l.theorique;
+      return {
+        type: 'inventaire',
+        ref: l.ref,
+        design: l.design,
+        qte: ecart,
+        unite: l.unite,
+        depot: l.depot,
+        dest: `Écart inventaire${l.motif ? ' · ' + l.motif : ''}`,
+        doc: 'INV-2026/' + invNum,
+        date: dateStr,
+        who: 'Contrôle gestion',
+      };
+    });
+
+    onConfirm(mouvements);
+    window.toast(
+      `Inventaire INV-2026/${invNum} validé`,
+      'success',
+      `${lignesAvecEcart.length} écart${lignesAvecEcart.length > 1 ? 's' : ''} constaté${lignesAvecEcart.length > 1 ? 's' : ''}`
+    );
+  };
+
+  const cols = '80px 1fr 70px 90px 90px 80px 1fr';
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="Inventaire physique"
+      subtitle={`INV-2026/${invNum} · Comptage et régularisation des stocks`}
+      width={900}
+      footer={
+        <>
+          <Button onClick={onClose}>Annuler</Button>
+          <Button
+            variant="primary"
+            onClick={handleConfirm}
+            icon={<Icon name="check" size={13} stroke={TOKENS.bg} />}
+          >
+            Valider l'inventaire ({lignesAvecEcart.length} écart{lignesAvecEcart.length > 1 ? 's' : ''})
+          </Button>
+        </>
+      }
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+        <div style={{
+          display: 'grid', gridTemplateColumns: cols, gap: 10,
+          padding: '10px 14px', background: TOKENS.ink,
+          borderRadius: '6px 6px 0 0',
+          fontFamily: 'IBM Plex Mono', fontSize: 9.5, color: TOKENS.bg,
+          letterSpacing: '0.08em', textTransform: 'uppercase',
+        }}>
+          <span>Réf.</span>
+          <span>Désignation</span>
+          <span style={{ textAlign: 'center' }}>Unité</span>
+          <span style={{ textAlign: 'right' }}>Théorique</span>
+          <span style={{ textAlign: 'right', color: TOKENS.ocre }}>Réel ✎</span>
+          <span style={{ textAlign: 'right' }}>Écart</span>
+          <span>Motif d'écart</span>
+        </div>
+
+        <div style={{ maxHeight: 420, overflowY: 'auto', border: `1px solid ${TOKENS.line}`, borderTop: 'none', borderRadius: '0 0 6px 6px' }}>
+          {lignes.map((l, i) => {
+            const reelVal = l.reel === '' ? 0 : Number(l.reel);
+            const ecart = reelVal - l.theorique;
+            const hasEcart = ecart !== 0;
+            return (
+              <div key={l.ref} className="erp-row" style={{
+                display: 'grid', gridTemplateColumns: cols, gap: 10,
+                padding: '10px 14px', alignItems: 'center',
+                borderBottom: i < lignes.length - 1 ? `1px solid ${TOKENS.line}` : 'none',
+                background: hasEcart ? (ecart < 0 ? TOKENS.redSoft : TOKENS.greenSoft) : 'transparent',
+              }}>
+                <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 10.5, color: TOKENS.ocreDeep }}>{l.ref}</span>
+                <span style={{ fontSize: 12.5, color: TOKENS.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {l.design}
+                </span>
+                <span style={{ textAlign: 'center', fontFamily: 'IBM Plex Mono', fontSize: 11, color: TOKENS.ink3 }}>{l.unite}</span>
+                <span style={{ textAlign: 'right', fontFamily: 'IBM Plex Mono', fontSize: 12.5, color: TOKENS.ink2 }}>
+                  {l.theorique.toLocaleString('fr-FR')}
+                </span>
+                <input
+                  type="number"
+                  value={l.reel}
+                  onChange={e => updateReel(l.ref, e.target.value)}
+                  style={{
+                    height: 32, padding: '0 8px',
+                    border: `1px solid ${hasEcart ? (ecart < 0 ? TOKENS.red : TOKENS.green) : TOKENS.line2}`,
+                    borderRadius: 4, background: TOKENS.paper, outline: 'none',
+                    fontFamily: 'IBM Plex Mono', fontSize: 12.5,
+                    color: hasEcart ? (ecart < 0 ? TOKENS.red : TOKENS.green) : TOKENS.ink,
+                    fontWeight: hasEcart ? 600 : 400,
+                    textAlign: 'right', width: '100%',
+                  }}
+                />
+                <span style={{
+                  textAlign: 'right',
+                  fontFamily: 'IBM Plex Mono', fontSize: 12.5, fontWeight: 600,
+                  color: !hasEcart ? TOKENS.ink3 : (ecart < 0 ? TOKENS.red : TOKENS.green),
+                }}>
+                  {!hasEcart ? '—' : (ecart > 0 ? '+' : '') + ecart.toLocaleString('fr-FR')}
+                </span>
+                <div>
+                  {hasEcart ? (
+                    <select
+                      value={l.motif}
+                      onChange={e => updateMotif(l.ref, e.target.value)}
+                      style={{
+                        width: '100%', height: 32, padding: '0 8px',
+                        border: `1px solid ${TOKENS.line2}`, borderRadius: 4,
+                        background: TOKENS.paper, fontFamily: 'IBM Plex Sans', fontSize: 11.5,
+                        color: TOKENS.ink, outline: 'none', appearance: 'none',
+                      }}
+                    >
+                      <option value="">— Motif —</option>
+                      {MOTIF_ECART.map(m => <option key={m} value={m}>{m}</option>)}
+                    </select>
+                  ) : (
+                    <span style={{ fontSize: 11, color: TOKENS.ink4, fontFamily: 'IBM Plex Mono' }}>Pas d'écart</span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {lignesAvecEcart.length > 0 && (
+          <div style={{
+            marginTop: 14, padding: '12px 14px',
+            background: TOKENS.amberSoft, border: `1px solid ${TOKENS.amber}`, borderRadius: 6,
+            fontSize: 12.5, color: 'oklch(0.45 0.10 75)',
+            display: 'flex', alignItems: 'center', gap: 8,
+          }}>
+            <Icon name="warning" size={14} stroke={TOKENS.amber} />
+            <span>
+              <b>{lignesAvecEcart.length} article{lignesAvecEcart.length > 1 ? 's' : ''}</b> avec écart — des mouvements d'inventaire seront générés automatiquement.
+            </span>
+          </div>
+        )}
+      </div>
+    </Modal>
   );
 }
 

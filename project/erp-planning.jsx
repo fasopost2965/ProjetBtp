@@ -1,6 +1,6 @@
 /* global React, TOKENS, Icon, Pill, Card, CardHead, Progress, Button, fmtMAD */
 // =============================================================================
-// ERP — Screen — Planning multi-chantiers (Gantt + charge des équipes)
+// ERP — Screen — Planning multi-chantiers (Gantt + charge des équipes + ressources)
 // =============================================================================
 
 // Timeline domain
@@ -52,20 +52,196 @@ const PROJETS = [
 const CONDUCTEURS = ['K. Benjelloun', 'H. Alaoui', 'M. El Mansouri', 'S. Fassi', 'Y. Tazi'];
 const PHASE_TONES = ['ink3', 'ocre', 'ink']; // phase index → shade
 
+// 1.1 — Region filter constant
+const REGIONS = ['Casa-Settat', 'Rabat-Salé-Kénitra', 'Tanger-Tétouan', 'Souss-Massa', 'Fès-Meknès', 'Oriental', 'Dakhla-Oued Eddahab'];
+
+// 1.3 — Resources histogram data
+const RESSOURCES = [
+  { sem: 'S-22', semaine: '26 mai', total: 148, sites: [{code:'CSB-114',n:42},{code:'RBT-208',n:18},{code:'TNG-061',n:31},{code:'AGD-033',n:22},{code:'MEK-019',n:19},{code:'OUJ-007',n:16}] },
+  { sem: 'S-23', semaine: '2 juin', total: 152, sites: [{code:'CSB-114',n:45},{code:'RBT-208',n:22},{code:'TNG-061',n:28},{code:'AGD-033',n:24},{code:'MEK-019',n:18},{code:'OUJ-007',n:15}] },
+  { sem: 'S-24', semaine: '9 juin', total: 161, sites: [{code:'CSB-114',n:48},{code:'RBT-208',n:25},{code:'TNG-061',n:30},{code:'AGD-033',n:26},{code:'MEK-019',n:17},{code:'OUJ-007',n:15}] },
+  { sem: 'S-25', semaine: '16 juin', total: 145, sites: [{code:'CSB-114',n:44},{code:'RBT-208',n:20},{code:'TNG-061',n:28},{code:'AGD-033',n:22},{code:'MEK-019',n:16},{code:'OUJ-007',n:15}] },
+  { sem: 'S-26', semaine: '23 juin', total: 158, sites: [{code:'CSB-114',n:46},{code:'RBT-208',n:24},{code:'TNG-061',n:32},{code:'AGD-033',n:24},{code:'MEK-019',n:18},{code:'OUJ-007',n:14}] },
+  { sem: 'S-27', semaine: '30 juin', total: 163, sites: [{code:'CSB-114',n:50},{code:'RBT-208',n:26},{code:'TNG-061',n:29},{code:'AGD-033',n:25},{code:'MEK-019',n:19},{code:'OUJ-007',n:14}] },
+  { sem: 'S-28', semaine: '7 juil', total: 171, sites: [{code:'CSB-114',n:52},{code:'RBT-208',n:28},{code:'TNG-061',n:31},{code:'AGD-033',n:26},{code:'MEK-019',n:20},{code:'OUJ-007',n:14}] },
+  { sem: 'S-29', semaine: '14 juil', total: 168, sites: [{code:'CSB-114',n:51},{code:'RBT-208',n:27},{code:'TNG-061',n:30},{code:'AGD-033',n:26},{code:'MEK-019',n:20},{code:'OUJ-007',n:14}] },
+];
+const SITE_COLORS = { 'CSB-114': TOKENS.ink, 'RBT-208': TOKENS.blue, 'TNG-061': TOKENS.ocre, 'AGD-033': TOKENS.amber, 'MEK-019': TOKENS.green, 'OUJ-007': TOKENS.ink3 };
+
+// =============================================================================
+// 1.2 — Alerts panel
+// =============================================================================
+function AlertsPanel() {
+  const enRetard = PROJETS.filter(p => p.status === 'En retard');
+  const jalons30 = PROJETS.filter(p => p.jalon && Math.abs(parseMY(p.jalon[1]) - TODAY) < 0.083 * 2); // ~2 months ≈ 30+ days window
+
+  if (enRetard.length === 0 && jalons30.length === 0) return null;
+
+  return (
+    <div className="erp-fade-in" style={{
+      borderLeft: `4px solid ${TOKENS.amber}`,
+      background: TOKENS.amberSoft,
+      borderRadius: '0 8px 8px 0',
+      padding: '14px 18px',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 12,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <Icon name="warning" size={15} stroke={TOKENS.amber} strokeWidth={2} />
+        <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 10.5, color: TOKENS.ocreDeep, letterSpacing: '0.1em', fontWeight: 600 }}>
+          ALERTES PLANNING — ACTION REQUISE
+        </span>
+      </div>
+
+      {enRetard.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 9.5, color: TOKENS.ink3, letterSpacing: '0.08em' }}>PROJETS EN RETARD</div>
+          {enRetard.map(p => (
+            <div key={p.code} style={{ display: 'flex', alignItems: 'center', gap: 12, background: TOKENS.paper, borderRadius: 6, padding: '10px 14px', border: `1px solid ${TOKENS.line}` }}>
+              <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: TOKENS.ocreDeep, fontWeight: 600, flexShrink: 0 }}>{p.code}</span>
+              <span style={{ fontSize: 13, color: TOKENS.ink, fontWeight: 500, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
+              <Pill tone="amber" dot>{p.status}</Pill>
+              <span style={{ fontFamily: 'IBM Plex Sans', fontSize: 11.5, color: TOKENS.amber, fontWeight: 600, flexShrink: 0 }}>Retard planning — action requise</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {jalons30.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 9.5, color: TOKENS.ink3, letterSpacing: '0.08em' }}>JALONS DANS LES 30 JOURS</div>
+          {jalons30.map(p => (
+            <div key={p.code} style={{ display: 'flex', alignItems: 'center', gap: 12, background: TOKENS.paper, borderRadius: 6, padding: '10px 14px', border: `1px solid ${TOKENS.line}` }}>
+              <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: TOKENS.ocreDeep, fontWeight: 600, flexShrink: 0 }}>{p.code}</span>
+              <span style={{ fontSize: 13, color: TOKENS.ink, fontWeight: 500, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
+              <svg width="11" height="11" viewBox="0 0 10 10"><rect x="1" y="1" width="6" height="6" transform="rotate(45 5 5)" fill={TOKENS.ocreDeep} /></svg>
+              <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: TOKENS.ocreDeep, flexShrink: 0 }}>{p.jalon[0]} · {fmtMY(parseMY(p.jalon[1]))}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// =============================================================================
+// 1.3 — Resource histogram (SVG stacked bars)
+// =============================================================================
+function RessourcesHistogram() {
+  const BAR_H = 200;
+  const MAX_CAP = 180;
+  const BAR_W = 54;
+  const GAP = 18;
+  const LABEL_H = 40;
+  const svgW = RESSOURCES.length * (BAR_W + GAP) + GAP;
+  const svgH = BAR_H + LABEL_H + 4;
+
+  return (
+    <Card delay={120} padding={0} style={{ overflow: 'hidden' }}>
+      <div style={{ padding: '16px 22px', borderBottom: `1px solid ${TOKENS.line}` }}>
+        <CardHead eyebrow="RESSOURCES HUMAINES" title="Ressources par semaine"
+          right={<span style={{ fontFamily: 'IBM Plex Mono', fontSize: 10.5, color: TOKENS.ink3 }}>8 semaines · ouvriers par chantier</span>}
+          style={{ marginBottom: 0 }} />
+      </div>
+
+      <div style={{ padding: '20px 22px', overflowX: 'auto' }}>
+        <svg width={svgW} height={svgH} style={{ display: 'block' }}>
+          {/* capacity max line */}
+          {(() => {
+            const capY = BAR_H - (MAX_CAP / MAX_CAP) * BAR_H;
+            return (
+              <g>
+                <line x1={0} y1={capY} x2={svgW} y2={capY}
+                  stroke={TOKENS.red} strokeWidth={1.5} strokeDasharray="5,4" opacity={0.7} />
+                <text x={svgW - 4} y={capY - 5} textAnchor="end"
+                  fontFamily="IBM Plex Mono" fontSize={9} fill={TOKENS.red} opacity={0.85}>
+                  Capacité max conseillée: 180 ouvriers
+                </text>
+              </g>
+            );
+          })()}
+
+          {/* Bars */}
+          {RESSOURCES.map((week, wi) => {
+            const x = GAP + wi * (BAR_W + GAP);
+            let yOffset = BAR_H;
+
+            return (
+              <g key={week.sem}>
+                {/* stacked segments bottom-up */}
+                {week.sites.map((site) => {
+                  const segH = (site.n / MAX_CAP) * BAR_H;
+                  yOffset -= segH;
+                  const color = SITE_COLORS[site.code] || TOKENS.ink3;
+                  const y = yOffset;
+                  return (
+                    <rect key={site.code} x={x} y={y} width={BAR_W} height={segH}
+                      fill={color} opacity={0.88} rx={site === week.sites[week.sites.length - 1] ? 2 : 0} />
+                  );
+                })}
+
+                {/* total label above bar */}
+                <text x={x + BAR_W / 2} y={yOffset - 6} textAnchor="middle"
+                  fontFamily="Manrope" fontWeight="700" fontSize={11} fill={TOKENS.ink}>
+                  {week.total}
+                </text>
+
+                {/* week label below */}
+                <text x={x + BAR_W / 2} y={BAR_H + 16} textAnchor="middle"
+                  fontFamily="IBM Plex Mono" fontSize={8.5} fill={TOKENS.ink3}>
+                  {week.sem}
+                </text>
+                <text x={x + BAR_W / 2} y={BAR_H + 30} textAnchor="middle"
+                  fontFamily="IBM Plex Sans" fontSize={9.5} fill={TOKENS.ink3}>
+                  {week.semaine}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+
+      {/* Legend */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap',
+        padding: '12px 22px', borderTop: `1px solid ${TOKENS.line}`, background: TOKENS.bg }}>
+        <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 9.5, color: TOKENS.ink3, letterSpacing: '0.1em' }}>CHANTIERS</span>
+        {Object.entries(SITE_COLORS).map(([code, color]) => (
+          <span key={code} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: TOKENS.ink2 }}>
+            <span style={{ width: 14, height: 10, borderRadius: 2, background: color, opacity: 0.88 }} />
+            {code}
+          </span>
+        ))}
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: TOKENS.ink2, marginLeft: 8 }}>
+          <svg width="20" height="10"><line x1="0" y1="5" x2="20" y2="5" stroke={TOKENS.red} strokeWidth="1.5" strokeDasharray="4,3" /></svg>
+          Max conseillé (180)
+        </span>
+      </div>
+    </Card>
+  );
+}
+
+// =============================================================================
+// Main Planning component
 // =============================================================================
 function Planning() {
-  const [view, setView] = React.useState('gantt'); // gantt | charge
+  const [view, setView] = React.useState('gantt'); // gantt | charge | ressources
   const [cond, setCond] = React.useState('all');
+  const [region, setRegion] = React.useState('all'); // 1.1 region filter
   const [hover, setHover] = React.useState(null);
 
   let rows = PROJETS.slice().sort((a, b) => parseMY(a.debut) - parseMY(b.debut));
   if (cond !== 'all') rows = rows.filter(r => r.conducteur === cond);
+  if (region !== 'all') rows = rows.filter(r => r.region === region); // 1.1
 
   const enRetard = PROJETS.filter(p => p.status === 'En retard').length;
   const jalons30 = PROJETS.filter(p => p.jalon && Math.abs(parseMY(p.jalon[1]) - TODAY) < 0.17).length;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      {/* 1.2 — Alerts panel (before Gantt/Charge) */}
+      <AlertsPanel />
+
       {/* Hero */}
       <div className="erp-fade-in" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap' }}>
         <div>
@@ -84,8 +260,9 @@ function Planning() {
 
       {/* Controls */}
       <div className="erp-fade-in" style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+        {/* View toggle — now 3 options */}
         <div style={{ display: 'flex', background: TOKENS.bgWarm, borderRadius: 6, padding: 2 }}>
-          {[['gantt', 'Diagramme de Gantt'], ['charge', 'Charge des équipes']].map(([id, label]) => (
+          {[['gantt', 'Diagramme de Gantt'], ['charge', 'Charge des équipes'], ['ressources', 'Ressources hebdomadaires']].map(([id, label]) => (
             <button key={id} onClick={() => setView(id)} style={{
               padding: '7px 14px', borderRadius: 4, border: 'none', cursor: 'pointer',
               background: view === id ? TOKENS.paper : 'transparent',
@@ -98,6 +275,30 @@ function Planning() {
 
         <CondFilter value={cond} onChange={setCond} />
 
+        {/* 1.1 — Region select */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 9.5, color: TOKENS.ink3, letterSpacing: '0.1em' }}>RÉGION</span>
+          <select
+            value={region}
+            onChange={e => setRegion(e.target.value)}
+            style={{
+              height: 32, padding: '0 10px',
+              border: `1px solid ${region !== 'all' ? TOKENS.ocre : TOKENS.line2}`,
+              borderRadius: 6,
+              background: region !== 'all' ? TOKENS.ocreSoft : TOKENS.paper,
+              color: region !== 'all' ? TOKENS.ocreDeep : TOKENS.ink2,
+              fontFamily: 'IBM Plex Sans', fontSize: 12.5,
+              cursor: 'pointer', outline: 'none',
+              appearance: 'none', paddingRight: 26,
+              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238a8378' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E")`,
+              backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center',
+            }}
+          >
+            <option value="all">Toutes les régions</option>
+            {REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
+          </select>
+        </div>
+
         <div style={{ flex: 1 }} />
 
         {/* Inline alerts */}
@@ -108,9 +309,9 @@ function Planning() {
         </div>
       </div>
 
-      {view === 'gantt'
-        ? <Gantt rows={rows} hover={hover} setHover={setHover} />
-        : <Charge cond={cond} />}
+      {view === 'gantt' && <Gantt rows={rows} hover={hover} setHover={setHover} />}
+      {view === 'charge' && <Charge cond={cond} />}
+      {view === 'ressources' && <RessourcesHistogram />}
     </div>
   );
 }

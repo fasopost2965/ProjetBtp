@@ -80,7 +80,20 @@ function Etudes() {
 function DevisHub({ onSimulate, onNew }) {
   const [filter, setFilter] = React.useState('all');
   const [preview, setPreview] = React.useState(null);
-  const filtered = filter === 'all' ? DEVIS_LIST : DEVIS_LIST.filter(d => d.status.toLowerCase() === filter);
+  const [convertTarget, setConvertTarget] = React.useState(null);
+  const [devisList, setDevisList] = React.useState(DEVIS_LIST);
+  const filtered = filter === 'all' ? devisList : devisList.filter(d => d.status.toLowerCase() === filter);
+
+  const handleConvert = (devis) => {
+    const newCode = 'CSB-' + (Math.floor(Math.random() * 50) + 200);
+    setDevisList(prev => prev.map(d => d.code === devis.code
+      ? { ...d, status: 'Converti', tone: 'ocre', convertedTo: newCode }
+      : d
+    ));
+    setConvertTarget(null);
+    window.toast(`Chantier ${newCode} ouvert depuis ${devis.code}`, 'success', devis.name);
+    setTimeout(() => { window.location.hash = 'sites'; }, 800);
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -208,7 +221,7 @@ function DevisHub({ onSimulate, onNew }) {
               <Button size="sm" onClick={(e) => { e.stopPropagation(); setPreview(d); }}
                 icon={<Icon name="doc" size={11} stroke={TOKENS.ink2} />}>Aperçu</Button>
               {d.status === 'Accepté' && (
-                <Button size="sm" variant="ocre" iconRight={<Icon name="arrowRight" size={11} stroke={TOKENS.ocreDeep} />}>
+                <Button size="sm" variant="ocre" onClick={(e) => { e.stopPropagation(); setConvertTarget(d); }} iconRight={<Icon name="arrowRight" size={11} stroke={TOKENS.ocreDeep} />}>
                   → Chantier
                 </Button>
               )}
@@ -227,6 +240,33 @@ function DevisHub({ onSimulate, onNew }) {
 
       <ConversionFlow />
       {preview && <window.DevisDocPreview devis={preview} onClose={() => setPreview(null)} />}
+      {convertTarget && (
+        <window.Modal open title="Convertir en chantier" subtitle={convertTarget.code + ' — ' + convertTarget.name}
+          width={480} onClose={() => setConvertTarget(null)}
+          footer={
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <Button onClick={() => setConvertTarget(null)}>Annuler</Button>
+              <Button variant="primary" onClick={() => handleConvert(convertTarget)}
+                icon={<Icon name="arrowRight" size={13} stroke={TOKENS.bg} />}>
+                Ouvrir le chantier
+              </Button>
+            </div>
+          }>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: '4px 0' }}>
+            <div style={{ padding: '14px 16px', background: TOKENS.ocreSoft, borderRadius: 6, border: `1px solid ${TOKENS.ocre}` }}>
+              <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 9.5, color: TOKENS.ocreDeep, letterSpacing: '0.12em', marginBottom: 6 }}>DEVIS ACCEPTÉ</div>
+              <div style={{ fontFamily: 'Manrope', fontWeight: 700, fontSize: 15, color: TOKENS.ink }}>{convertTarget.name}</div>
+              <div style={{ fontSize: 12, color: TOKENS.ink3, marginTop: 4 }}>{convertTarget.client}</div>
+              <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 13, color: TOKENS.ocreDeep, fontWeight: 600, marginTop: 8 }}>
+                {fmtMAD(convertTarget.total)} DH HT · {convertTarget.surface} m²
+              </div>
+            </div>
+            <div style={{ fontSize: 13, color: TOKENS.ink2, lineHeight: 1.6 }}>
+              Un nouveau chantier va être créé avec les données du devis pré-remplies. Le devis sera marqué <strong>Converti</strong>. Vous pourrez ensuite ouvrir des situations et émettre des factures depuis la fiche chantier.
+            </div>
+          </div>
+        </window.Modal>
+      )}
     </div>
   );
 }
