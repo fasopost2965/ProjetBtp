@@ -57,6 +57,8 @@ function Facturation() {
   const [newDevis, setNewDevis] = React.useState(false);
   const [newFact, setNewFact]   = React.useState(false);
   const [previewFact, setPreviewFact] = React.useState(null);
+  const [convertDevis, setConvertDevis] = React.useState(null);
+  const [convertedNums, setConvertedNums] = React.useState([]);
 
   React.useEffect(() => {
     const h = (e) => {
@@ -114,7 +116,7 @@ function Facturation() {
       <div style={{ display: 'grid', gridTemplateColumns: selected ? 'minmax(0, 1fr) minmax(0, 340px)' : '1fr', gap: 16 }}>
         <div>
           {tab === 'factures' && <FacturesList filter={filter} setFilter={setFilter} selected={selected} onSelect={setSelected} />}
-          {tab === 'devis'    && <DevisList />}
+          {tab === 'devis'    && <DevisList convertedNums={convertedNums} onConvert={setConvertDevis} />}
           {tab === 'encaisse' && <EncaissementsView />}
         </div>
         {selected && <FactureDetail facture={selected} onClose={() => setSelected(null)} onPreview={() => setPreviewFact(selected)} />}
@@ -123,6 +125,19 @@ function Facturation() {
       {newDevis && <window.NewDevisModal onClose={() => setNewDevis(false)} />}
       {newFact && <window.NewFactureModal onClose={() => setNewFact(false)} />}
       {previewFact && <window.FactureDocPreview facture={previewFact} onClose={() => setPreviewFact(null)} />}
+      {convertDevis && (
+        <ConvertDevisModal
+          devis={convertDevis}
+          onClose={() => setConvertDevis(null)}
+          onConfirm={() => {
+            const newNum = `FA-26-0${39 + convertedNums.length}`;
+            setConvertedNums(p => [...p, convertDevis.num]);
+            setConvertDevis(null);
+            setTab('factures');
+            window.toast(`Facture ${newNum} créée`, 'success', `${convertDevis.client} · ${fmtMAD(convertDevis.montantHT * 1.2)} DH TTC`);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -365,11 +380,12 @@ function FacturesList({ filter, setFilter, selected, onSelect }) {
 }
 
 // -----------------------------------------------------------------------------
-function DevisList() {
+function DevisList({ convertedNums = [], onConvert }) {
   return (
     <Card padding={0} delay={400}>
       {DEVIS.map((d, i) => {
-        const s = STATUS_DEVIS[d.status];
+        const isConverted = convertedNums.includes(d.num);
+        const s = isConverted ? { label: 'Converti', tone: 'ocre' } : STATUS_DEVIS[d.status];
         return (
           <div key={d.num} className="erp-row" style={{
             borderBottom: i < DEVIS.length - 1 ? `1px solid ${TOKENS.line}` : 'none',
@@ -405,9 +421,16 @@ function DevisList() {
               <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, color: TOKENS.ink3, marginTop: 3 }}>
                 DH TTC
               </div>
-              {d.status === 'accepte' && (
+              {d.status === 'accepte' && !isConverted && (
                 <div style={{ marginTop: 8 }}>
-                  <Button size="sm">Convertir en facture →</Button>
+                  <Button size="sm" variant="ocre" onClick={(e) => { e.stopPropagation(); onConvert(d); }}>
+                    Convertir en facture →
+                  </Button>
+                </div>
+              )}
+              {isConverted && (
+                <div style={{ marginTop: 8, fontFamily: 'IBM Plex Mono', fontSize: 10, color: TOKENS.ocreDeep }}>
+                  ✓ Facture émise
                 </div>
               )}
             </div>
@@ -415,6 +438,47 @@ function DevisList() {
         );
       })}
     </Card>
+  );
+}
+
+// ─── Conversion Devis → Facture ───────────────────────────────────────────────
+function ConvertDevisModal({ devis, onClose, onConfirm }) {
+  const { Modal } = window;
+  return (
+    <Modal open onClose={onClose}
+      title="Convertir en facture"
+      subtitle={`${devis.num} · ${devis.client}`}
+      width={500}
+      footer={<>
+        <Button onClick={onClose}>Annuler</Button>
+        <Button variant="primary" icon={<Icon name="check" size={13} stroke={TOKENS.bg} />} onClick={onConfirm}>
+          Émettre la facture
+        </Button>
+      </>}
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ padding: 16, background: TOKENS.bgWarm, borderRadius: 8, border: `1px solid ${TOKENS.line}` }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            {[
+              ['Client', devis.client],
+              ['Chantier', devis.chantier],
+              ['Référence devis', devis.num],
+              ['Montant HT', `${(devis.montantHT).toLocaleString('fr-FR')} DH`],
+              ['TVA 20 %', `${Math.round(devis.montantHT * 0.2).toLocaleString('fr-FR')} DH`],
+              ['Montant TTC', `${(devis.montantHT * 1.2).toLocaleString('fr-FR')} DH`],
+            ].map(([k, v]) => (
+              <div key={k}>
+                <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 9.5, color: TOKENS.ink3, letterSpacing: '0.08em', marginBottom: 3 }}>{k.toUpperCase()}</div>
+                <div style={{ fontSize: 13, color: TOKENS.ink, fontWeight: 500, fontFamily: k.includes('Montant') || k.includes('TVA') ? 'IBM Plex Mono' : 'IBM Plex Sans' }}>{v}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div style={{ padding: '10px 14px', background: TOKENS.ocreSoft, borderRadius: 6, border: `1px solid oklch(0.85 0.06 60)`, fontSize: 12, color: TOKENS.ocreDeep, lineHeight: 1.5 }}>
+          Une facture sera créée avec échéance à 30 jours. Le devis passera en statut «&nbsp;Converti&nbsp;».
+        </div>
+      </div>
+    </Modal>
   );
 }
 
