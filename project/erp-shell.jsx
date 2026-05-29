@@ -1,4 +1,4 @@
-/* global React, TOKENS, Icon, Logo, Pill */
+/* global React, TOKENS, Icon, Logo, Pill, useBreakpoint */
 // =============================================================================
 // ERP — App shell: sidebar + topbar + hash routing
 // =============================================================================
@@ -40,15 +40,42 @@ const NAV_GROUPS = [
 // -----------------------------------------------------------------------------
 // Sidebar
 // -----------------------------------------------------------------------------
-function Sidebar({ route, onNavigate }) {
+function Sidebar({ route, onNavigate, isOpen, onClose, isMobile }) {
+  // On mobile: fixed overlay. On desktop: sticky column.
+  const sidebarStyle = isMobile ? {
+    width: 232, flexShrink: 0,
+    background: TOKENS.paper,
+    borderRight: `1px solid ${TOKENS.line}`,
+    display: 'flex', flexDirection: 'column',
+    height: '100vh',
+    position: 'fixed', top: 0, left: 0, zIndex: 200,
+    transform: isOpen ? 'translateX(0)' : 'translateX(-100%)',
+    transition: 'transform 240ms cubic-bezier(.22,.61,.36,1)',
+    boxShadow: isOpen ? '4px 0 32px rgba(26,24,20,0.18)' : 'none',
+  } : {
+    width: 232, flexShrink: 0,
+    background: TOKENS.paper,
+    borderRight: `1px solid ${TOKENS.line}`,
+    display: 'flex', flexDirection: 'column',
+    height: '100vh', position: 'sticky', top: 0,
+  };
+
+  const handleNavClick = (id) => {
+    onNavigate(id);
+    if (isMobile && onClose) onClose();
+  };
+
   return (
-    <aside style={{
-      width: 232, flexShrink: 0,
-      background: TOKENS.paper,
-      borderRight: `1px solid ${TOKENS.line}`,
-      display: 'flex', flexDirection: 'column',
-      height: '100vh', position: 'sticky', top: 0,
-    }}>
+    <React.Fragment>
+      {/* Mobile backdrop */}
+      {isMobile && isOpen && (
+        <div onClick={onClose} style={{
+          position: 'fixed', inset: 0, zIndex: 199,
+          background: 'rgba(26,24,20,0.40)',
+          animation: 'erpFadeUp 160ms ease both',
+        }} />
+      )}
+    <aside style={sidebarStyle}>
       {/* Logo block */}
       <div style={{
         height: 56, padding: '0 18px',
@@ -102,7 +129,7 @@ function Sidebar({ route, onNavigate }) {
             {g.items.map(item => {
               const active = route === item.id;
               return (
-                <button key={item.id} onClick={() => onNavigate(item.id)}
+                <button key={item.id} onClick={() => handleNavClick(item.id)}
                   className={`erp-nav-item${active ? ' active' : ''}`}
                   style={{
                   width: '100%', padding: '8px 10px',
@@ -163,13 +190,14 @@ function Sidebar({ route, onNavigate }) {
         </button>
       </div>
     </aside>
+    </React.Fragment>
   );
 }
 
 // -----------------------------------------------------------------------------
 // Topbar
 // -----------------------------------------------------------------------------
-function Topbar({ breadcrumb }) {
+function Topbar({ breadcrumb, onMenuToggle, isMobile }) {
   return (
     <header style={{
       height: 56, flexShrink: 0,
@@ -179,6 +207,19 @@ function Topbar({ breadcrumb }) {
       display: 'flex', alignItems: 'center', gap: 16,
       position: 'sticky', top: 0, zIndex: 10,
     }}>
+      {/* Hamburger — mobile only */}
+      {isMobile && (
+        <button onClick={onMenuToggle} style={{
+          width: 36, height: 36, flexShrink: 0,
+          border: `1px solid ${TOKENS.line}`, background: TOKENS.paper,
+          borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          cursor: 'pointer',
+        }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={TOKENS.ink2} strokeWidth="1.5" strokeLinecap="round">
+            <path d="M3 6h18M3 12h18M3 18h18" />
+          </svg>
+        </button>
+      )}
       {/* Breadcrumb */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'IBM Plex Sans', fontSize: 13 }}>
         {breadcrumb.map((b, i) => (
@@ -323,6 +364,15 @@ function NewMenu() {
 // Shell — wraps the routed screen
 // -----------------------------------------------------------------------------
 function Shell({ route, onNavigate, breadcrumb, children }) {
+  const bp = useBreakpoint();
+  const isMobile = bp.tablet; // < 1024
+  const [sidebarOpen, setSidebarOpen] = React.useState(false);
+
+  // Close sidebar when route changes on mobile
+  React.useEffect(() => {
+    if (isMobile) setSidebarOpen(false);
+  }, [route]);
+
   return (
     <div style={{
       display: 'flex', minHeight: '100vh',
@@ -330,9 +380,19 @@ function Shell({ route, onNavigate, breadcrumb, children }) {
       fontFamily: 'IBM Plex Sans',
       color: TOKENS.ink,
     }}>
-      <Sidebar route={route} onNavigate={onNavigate} />
+      <Sidebar
+        route={route}
+        onNavigate={onNavigate}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        isMobile={isMobile}
+      />
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-        <Topbar breadcrumb={breadcrumb} />
+        <Topbar
+          breadcrumb={breadcrumb}
+          onMenuToggle={() => setSidebarOpen(o => !o)}
+          isMobile={isMobile}
+        />
         <main style={{ flex: 1, padding: '24px 28px 40px' }}>
           {children}
         </main>

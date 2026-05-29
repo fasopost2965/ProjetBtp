@@ -299,6 +299,24 @@ const fmtMAD = (n) => {
   return n.toLocaleString('fr-FR');
 };
 
+// -----------------------------------------------------------------------------
+// useBreakpoint — responsive helper
+// Returns { mobile: bool, tablet: bool, desktop: bool }
+// mobile  : w < 768
+// tablet  : w < 1024
+// desktop : w >= 1024
+// -----------------------------------------------------------------------------
+function useBreakpoint() {
+  const [w, setW] = React.useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
+  React.useEffect(() => {
+    const h = () => setW(window.innerWidth);
+    window.addEventListener('resize', h);
+    return () => window.removeEventListener('resize', h);
+  }, []);
+  return { mobile: w < 768, tablet: w < 1024, desktop: w >= 1024 };
+}
+
 Object.assign(window, {
   TOKENS, Icon, Logo, Pill, Card, CardHead, Progress, Button, Stat, Sparkline, fmtMAD,
+  useBreakpoint,
 });
