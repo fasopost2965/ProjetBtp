@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<title>Atlas·BTP — ERP</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; padding: 0; background: #f6f3ee; }
+  body { font-family: 'IBM Plex Sans', sans-serif; color: #1a1814; }
+  * { box-sizing: border-box; }
+  input, button { font-family: inherit; }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #d6cebf; border-radius: 999px; border: 2px solid #f6f3ee; }
+  ::-webkit-scrollbar-thumb:hover { background: #bdb5a6; }
+
+  /* ─── Interaction layer ─── */
+  button { transition: background 140ms ease, border-color 140ms ease, color 140ms ease, transform 80ms ease; }
+  button:active:not(:disabled) { transform: translateY(0.5px); }
+  a { transition: color 140ms ease; cursor: pointer; }
+
+  .erp-nav-item:hover { background: #efe9df !important; }
+  .erp-nav-item.active:hover { background: #1a1814 !important; }
+  .erp-row { transition: background 140ms ease; }
+  .erp-row:hover { background: #faf8f3; }
+  .erp-card { transition: border-color 200ms ease, box-shadow 200ms ease, transform 200ms ease; }
+  .erp-card.hoverable:hover { border-color: #d6cebf; box-shadow: 0 1px 0 #fff inset, 0 8px 24px -16px rgba(26,24,20,0.12); }
+  .erp-icon-btn:hover { background: #efe9df !important; }
+  .erp-pill-btn:hover { background: #efe9df; border-color: #d6cebf; }
+
+  .erp-search:focus-within { border-color: #1a1814 !important; background: #fff !important; }
+
+  /* ─── Entry animations ─── */
+  @keyframes erpFadeUp {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .erp-fade-in { animation: erpFadeUp 360ms cubic-bezier(.22,.61,.36,1) both; }
+
+  @keyframes erpGrow {
+    from { transform: scaleX(0); }
+    to   { transform: scaleX(1); }
+  }
+  .erp-progress-fill { transform-origin: left center; animation: erpGrow 700ms cubic-bezier(.22,.61,.36,1) both; }
+
+  @keyframes erpGrowY {
+    from { transform: scaleY(0); }
+    to   { transform: scaleY(1); }
+  }
+
+  @keyframes erpPulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.4; }
+  }
+  .erp-pulse { animation: erpPulse 2s ease-in-out infinite; }
+
+  @keyframes erpSlideLeft {
+    from { transform: translateX(40px); opacity: 0; }
+    to   { transform: translateX(0); opacity: 1; }
+  }
+  @keyframes erpScaleIn {
+    from { transform: scale(0.96); opacity: 0; }
+    to   { transform: scale(1); opacity: 1; }
+  }
+
+  /* ─── Permission matrix ─── */
+  .perm-cell { transition: background 100ms ease, transform 80ms ease; }
+  .perm-cell:hover:not(.disabled) { background: #efe9df; }
+  .perm-cell:active:not(.disabled) { transform: scale(0.92); }
+
+  /* ─── Tooltips (data-tip) ─── */
+  [data-tip] { position: relative; }
+  [data-tip]:hover::after {
+    content: attr(data-tip);
+    position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%);
+    background: #1a1814; color: #f6f3ee;
+    font-family: 'IBM Plex Sans', sans-serif; font-size: 11px; font-weight: 500;
+    padding: 5px 9px; border-radius: 4px; white-space: nowrap;
+    pointer-events: none; z-index: 1000;
+    animation: erpFadeUp 140ms ease both;
+  }
+  [data-tip]:hover::before {
+    content: ''; position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
+    border: 4px solid transparent; border-top-color: #1a1814;
+    pointer-events: none; z-index: 1000;
+  }
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" src="erp-shared.jsx"></script>
+<script type="text/babel" src="erp-system.jsx"></script>
+<script type="text/babel" src="erp-modals-new.jsx"></script>
+<script type="text/babel" src="erp-doc-preview.jsx"></script>
+<script type="text/babel" src="erp-clients.jsx"></script>
+<script type="text/babel" src="erp-shell.jsx"></script>
+<script type="text/babel" src="erp-dashboard.jsx"></script>
+<script type="text/babel" src="erp-fiche-chantier.jsx"></script>
+<script type="text/babel" src="erp-etudes.jsx"></script>
+<script type="text/babel" src="erp-situations.jsx"></script>
+<script type="text/babel" src="erp-rapports.jsx"></script>
+<script type="text/babel" src="erp-rapports-extra.jsx"></script>
+<script type="text/babel" src="erp-chantiers.jsx"></script>
+<script type="text/babel" src="erp-pointage.jsx"></script>
+<script type="text/babel" src="erp-achats.jsx"></script>
+<script type="text/babel" src="erp-achats-reception.jsx"></script>
+<script type="text/babel" src="erp-facturation.jsx"></script>
+<script type="text/babel" src="erp-planning.jsx"></script>
+<script type="text/babel" src="erp-sous-traitance.jsx"></script>
+<script type="text/babel" src="erp-stock.jsx"></script>
+<script type="text/babel" src="erp-parc.jsx"></script>
+<script type="text/babel" src="erp-paie.jsx"></script>
+<script type="text/babel" src="erp-tresorerie.jsx"></script>
+<script type="text/babel" src="erp-marches.jsx"></script>
+<script type="text/babel" src="erp-ged.jsx"></script>
+<script type="text/babel" src="erp-ged-hse.jsx"></script>
+<script type="text/babel" src="erp-users.jsx"></script>
+<script type="text/babel" src="erp-settings.jsx"></script>
+<script type="text/babel">
+  const { Shell, StubScreen, Dashboard, FicheChantier, Etudes, Situations, Rapports, Chantiers, Pointage, Achats, Facturation, Planning, SousTraitance, Stock, Parc, Paie, Tresorerie, Marches, Ged, Users, Settings, Clients, NotificationProvider, ToastHost, NAV_GROUPS } = window;
+
+  const ROUTES = {
+    dashboard: { breadcrumb: ['Atlas BTP', 'Tableau de bord'], render: () => <Dashboard /> },
+    sites:     { breadcrumb: ['Atlas BTP', 'Chantiers'],         render: () => <Chantiers /> },
+    clients:   { breadcrumb: ['Atlas BTP', 'Clients'],           render: () => <Clients /> },
+    etudes:    { breadcrumb: ['Atlas BTP', 'Études & devis'],    render: () => <Etudes /> },
+    situations:{ breadcrumb: ['Atlas BTP', 'Situations'],        render: () => <Situations /> },
+    rapports:  { breadcrumb: ['Atlas BTP', 'Rapports'],          render: () => <Rapports /> },
+    pointage:  { breadcrumb: ['Atlas BTP', 'Pointage'],          render: () => <Pointage /> },
+    achats:    { breadcrumb: ['Atlas BTP', 'Achats'],            render: () => <Achats /> },
+    factures:  { breadcrumb: ['Atlas BTP', 'Facturation'],       render: () => <Facturation /> },
+    planning:  { breadcrumb: ['Atlas BTP', 'Planning'],           render: () => <Planning /> },
+    sst:       { breadcrumb: ['Atlas BTP', 'Sous-traitance'],     render: () => <SousTraitance /> },
+    stock:     { breadcrumb: ['Atlas BTP', 'Stock'],              render: () => <Stock /> },
+    parc:      { breadcrumb: ['Atlas BTP', 'Parc matériel'],      render: () => <Parc /> },
+    paie:      { breadcrumb: ['Atlas BTP', 'Paie chantier'],       render: () => <Paie /> },
+    tresorerie:{ breadcrumb: ['Atlas BTP', 'Trésorerie & cautions'], render: () => <Tresorerie /> },
+    marches:   { breadcrumb: ['Atlas BTP', 'Marchés publics'],      render: () => <Marches /> },
+    ged:       { breadcrumb: ['Atlas BTP', 'Documents'],           render: () => <Ged /> },
+    users:     { breadcrumb: ['Atlas BTP', 'Utilisateurs'],        render: () => <Users /> },
+    settings:  { breadcrumb: ['Atlas BTP', 'Paramétrage'],         render: () => <Settings /> },
+  };
+
+  function parseHash() {
+    const h = window.location.hash.replace('#', '') || 'dashboard';
+    if (h.startsWith('fiche-')) return { route: 'fiche', sidebar: 'sites', bc: ['Atlas BTP', 'Chantiers', h.replace('fiche-', '')] };
+    if (ROUTES[h]) return { route: h, sidebar: h, bc: ROUTES[h].breadcrumb };
+    return { route: h, sidebar: h, bc: null };
+  }
+
+  function App() {
+    const [state, setState] = React.useState(parseHash());
+    React.useEffect(() => {
+      const onHash = () => setState(parseHash());
+      window.addEventListener('hashchange', onHash);
+      return () => window.removeEventListener('hashchange', onHash);
+    }, []);
+
+    const allItems = NAV_GROUPS.flatMap(g => g.items);
+    const navItem = allItems.find(i => i.id === state.route);
+    const bc = state.bc || ['Atlas BTP', navItem?.label || 'Page'];
+
+    let render;
+    if (state.route === 'fiche') render = () => <FicheChantier />;
+    else if (ROUTES[state.route]) render = ROUTES[state.route].render;
+    else render = () => <StubScreen title={navItem?.label || 'À venir'} />;
+
+    return (
+      <Shell route={state.sidebar} onNavigate={(id) => { window.location.hash = id; }} breadcrumb={bc}>
+        {render()}
+      </Shell>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(
+    <NotificationProvider>
+      <App />
+      <ToastHost />
+    </NotificationProvider>
+  );
+</script>
+</body>
+</html>
