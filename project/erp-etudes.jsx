@@ -378,6 +378,7 @@ function Simulator({ onBack }) {
   const [lots, setLots] = React.useState(LOT_DEFINITIONS.map(l => l.id));
   const [margin, setMargin] = React.useState(15);
   const [duration, setDuration] = React.useState(14);
+  const [mode, setMode] = React.useState('express'); // refonte UX : express | detaille
 
   const pType = PROJECT_TYPES.find(p => p.id === project);
   const rFactor = REGIONS.find(r => r.id === region).factor;
@@ -407,6 +408,7 @@ function Simulator({ onBack }) {
       <SimHeader onBack={onBack} ht={ht} />
       <div style={{ display: 'grid', gridTemplateColumns: '440px 1fr', gap: 20, alignItems: 'flex-start' }}>
         <SimForm
+          mode={mode} setMode={setMode}
           project={project} setProject={setProject}
           surface={surface} setSurface={setSurface}
           region={region} setRegion={setRegion}
@@ -459,15 +461,29 @@ function SimHeader({ onBack, ht }) {
 }
 
 // -----------------------------------------------------------------------------
-function SimForm({ project, setProject, surface, setSurface, region, setRegion, finit, setFinit, lots, setLots, margin, setMargin, duration, setDuration, unit }) {
+function SimForm({ mode, setMode, project, setProject, surface, setSurface, region, setRegion, finit, setFinit, lots, setLots, margin, setMargin, duration, setDuration, unit }) {
+  const detaille = mode === 'detaille';
   return (
     <Card padding={0} delay={60} style={{ position: 'sticky', top: 80 }}>
-      <div style={{ padding: '20px 22px 14px', borderBottom: `1px solid ${TOKENS.line}` }}>
-        <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, color: TOKENS.ink3, letterSpacing: '0.12em', marginBottom: 4 }}>
-          5 QUESTIONS · MISE À JOUR EN DIRECT
+      <div style={{ padding: '16px 22px 14px', borderBottom: `1px solid ${TOKENS.line}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+        <div>
+          <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, color: TOKENS.ink3, letterSpacing: '0.12em', marginBottom: 4 }}>
+            {detaille ? 'PARAMÈTRES DÉTAILLÉS' : '3 QUESTIONS · MISE À JOUR EN DIRECT'}
+          </div>
+          <div style={{ fontFamily: 'Manrope', fontWeight: 700, fontSize: 16 }}>
+            Décrivez votre projet
+          </div>
         </div>
-        <div style={{ fontFamily: 'Manrope', fontWeight: 700, fontSize: 16 }}>
-          Décrivez votre projet
+        <div style={{ display: 'flex', gap: 3, background: TOKENS.bgWarm, borderRadius: 6, padding: 2 }}>
+          {[['express', 'Express'], ['detaille', 'Détaillé']].map(([id, label]) => (
+            <button key={id} onClick={() => setMode(id)} style={{
+              padding: '5px 11px', borderRadius: 4, border: 'none', cursor: 'pointer',
+              background: mode === id ? TOKENS.paper : 'transparent',
+              color: mode === id ? TOKENS.ink : TOKENS.ink3,
+              fontFamily: 'IBM Plex Sans', fontSize: 11.5, fontWeight: mode === id ? 600 : 400,
+              boxShadow: mode === id ? '0 1px 2px rgba(26,24,20,0.08)' : 'none',
+            }}>{label}</button>
+          ))}
         </div>
       </div>
 
@@ -534,6 +550,7 @@ function SimForm({ project, setProject, surface, setSurface, region, setRegion, 
           </div>
         </FormSection>
 
+        {detaille && <>
         {/* Q4 — Finition */}
         <FormSection num="4" label="Niveau de finition">
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
@@ -603,6 +620,7 @@ function SimForm({ project, setProject, surface, setSurface, region, setRegion, 
             }}>{duration} m</div>
           </div>
         </FormSection>
+        </>}
 
       </div>
     </Card>
