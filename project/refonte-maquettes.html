@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<title>Atlas·BTP — Maquettes refonte UX (Vague 1)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f6f3ee; --bgWarm:#efe9df; --paper:#fff; --ink:#1a1814; --ink2:#46423b;
+    --ink3:#8a8378; --ink4:#bdb5a6; --line:#e4ddd1; --line2:#d6cebf;
+    --ocre:oklch(0.62 0.12 50); --ocreDeep:oklch(0.50 0.13 45); --ocreSoft:oklch(0.94 0.04 70);
+    --green:oklch(0.55 0.08 150); --greenSoft:oklch(0.95 0.04 150);
+    --red:oklch(0.55 0.18 25); --redSoft:oklch(0.95 0.04 25);
+    --amber:oklch(0.72 0.13 75); --amberSoft:oklch(0.95 0.05 80);
+    --blue:oklch(0.50 0.10 240); --blueSoft:oklch(0.94 0.03 240);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:'IBM Plex Sans',sans-serif;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  h1,h2,h3{font-family:'Manrope',sans-serif;letter-spacing:-0.02em;margin:0;}
+  .eyebrow{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.12em;color:var(--ocreDeep);text-transform:uppercase;}
+  .card{background:var(--paper);border:1px solid var(--line);border-radius:8px;}
+
+  /* ---- Switcher header ---- */
+  .topbar{position:sticky;top:0;z-index:10;background:var(--ink);color:var(--bg);padding:14px 24px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;box-shadow:0 2px 12px rgba(26,24,20,.15);}
+  .topbar .brand{font-family:'Manrope';font-weight:800;font-size:16px;letter-spacing:-0.03em;}
+  .topbar .brand span{color:var(--ocre);}
+  .topbar .tag{font-family:'IBM Plex Mono';font-size:10px;color:var(--ink4);letter-spacing:0.1em;}
+  .switch{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap;}
+  .switch button{padding:8px 14px;border:none;border-radius:6px;cursor:pointer;font-family:'IBM Plex Sans';font-size:12.5px;font-weight:500;background:rgba(255,255,255,.08);color:var(--bg);transition:background .15s;}
+  .switch button:hover{background:rgba(255,255,255,.16);}
+  .switch button.active{background:var(--ocre);color:var(--ink);font-weight:600;}
+
+  .stage{max-width:1080px;margin:0 auto;padding:28px 24px 80px;}
+  .screen{display:none;animation:fade .4s cubic-bezier(.22,.61,.36,1);}
+  .screen.active{display:block;}
+  @keyframes fade{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+
+  .screen-intro{margin-bottom:20px;}
+  .screen-intro h2{font-size:22px;font-weight:700;}
+  .screen-intro p{color:var(--ink3);font-size:13px;margin:6px 0 0;max-width:620px;line-height:1.5;}
+  .badge-crit{display:inline-block;font-family:'IBM Plex Mono';font-size:9.5px;letter-spacing:0.08em;padding:3px 8px;border-radius:999px;background:var(--redSoft);color:var(--red);margin-left:8px;vertical-align:middle;}
+
+  /* ---- Generic bits ---- */
+  .row{display:flex;gap:14px;}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .pill{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:500;padding:2px 9px;border-radius:999px;}
+  .pill .dot{width:6px;height:6px;border-radius:999px;background:currentColor;}
+  .pill.green{background:var(--greenSoft);color:var(--green);}
+  .pill.red{background:var(--redSoft);color:var(--red);}
+  .pill.amber{background:var(--amberSoft);color:oklch(0.50 0.10 75);}
+  .pill.blue{background:var(--blueSoft);color:var(--blue);}
+  .pill.ocre{background:var(--ocreSoft);color:var(--ocreDeep);}
+  .pill.neutral{background:var(--bgWarm);color:var(--ink3);}
+  .btn{border:1px solid var(--line2);background:var(--paper);border-radius:6px;padding:7px 12px;font-family:'IBM Plex Sans';font-size:12px;font-weight:500;color:var(--ink2);cursor:pointer;transition:background .14s,border-color .14s;}
+  .btn:hover{background:var(--bgWarm);border-color:var(--line2);}
+  .btn.primary{background:var(--ink);color:var(--bg);border-color:var(--ink);}
+  .btn.ocre{background:var(--ocre);color:var(--ink);border-color:var(--ocre);}
+  .btn.sm{padding:5px 9px;font-size:11px;}
+  .attn-banner{background:var(--amberSoft);border:1px solid var(--amber);border-left:4px solid var(--amber);border-radius:8px;padding:14px 16px;}
+  .num{font-family:'Manrope';font-weight:700;letter-spacing:-0.025em;}
+
+  /* KPI */
+  .kpi{padding:16px;}
+  .kpi .lbl{font-family:'IBM Plex Mono';font-size:9.5px;letter-spacing:0.1em;color:var(--ocreDeep);margin-bottom:10px;text-transform:uppercase;}
+  .kpi .val{font-family:'Manrope';font-weight:700;font-size:24px;letter-spacing:-0.025em;line-height:1;}
+  .kpi .sub{font-size:11px;color:var(--ink3);margin-top:8px;}
+  .kpi.dark{background:var(--ink);border-color:var(--ink);}
+  .kpi.dark .val{color:var(--bg);} .kpi.dark .lbl{color:var(--ocre);} .kpi.dark .sub{color:var(--ink4);}
+
+  /* lists */
+  .listrow{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line);}
+  .listrow:last-child{border-bottom:none;}
+  .listrow:hover{background:#faf8f3;}
+  .ic{width:34px;height:34px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:'IBM Plex Mono';font-size:9px;font-weight:600;}
+  .grow{flex:1;min-width:0;}
+  .amt{font-family:'IBM Plex Mono';font-weight:600;font-size:13px;text-align:right;}
+
+  .note{font-size:11px;color:var(--ink4);font-style:italic;margin-top:14px;}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:11px;color:var(--ink3);}
+  .legend span{display:inline-flex;align-items:center;gap:5px;}
+  .sq{width:10px;height:10px;border-radius:2px;}
+
+  /* sparkbars */
+  .spark{display:flex;align-items:flex-end;gap:3px;height:54px;}
+  .spark > div{flex:1;border-radius:2px 2px 0 0;}
+
+  /* phone frame */
+  .phone-wrap{display:flex;justify-content:center;}
+  .phone{width:340px;border:10px solid var(--ink);border-radius:34px;overflow:hidden;background:var(--bg);box-shadow:0 24px 60px -18px rgba(26,24,20,.35);}
+  .phone .pscroll{height:640px;overflow-y:auto;}
+  .phone .phead{background:var(--paper);padding:16px;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:2;}
+  .wkr{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);background:var(--paper);}
+  .av{width:38px;height:38px;border-radius:999px;background:var(--ocreSoft);color:var(--ocreDeep);display:flex;align-items:center;justify-content:center;font-family:'Manrope';font-weight:700;font-size:12px;flex-shrink:0;}
+  .tgl{border:none;border-radius:999px;padding:8px 14px;font-family:'IBM Plex Sans';font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;}
+  .tgl.present{background:var(--greenSoft);color:var(--green);}
+  .tgl.absent{background:var(--redSoft);color:var(--red);}
+  .motif{font-family:'IBM Plex Mono';font-size:10.5px;color:var(--red);margin-top:4px;}
+  .sticky-cta{position:sticky;bottom:0;padding:12px 16px;background:linear-gradient(transparent,var(--bg) 30%);}
+  .sticky-cta button{width:100%;padding:14px;border:none;border-radius:10px;background:var(--ink);color:var(--bg);font-family:'Manrope';font-weight:700;font-size:14px;cursor:pointer;}
+
+  @media(max-width:560px){.grid3,.grid2{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">Atlas<span>·</span>BTP</div>
+  <div class="tag">MAQUETTES REFONTE UX · VAGUE 1</div>
+  <div class="switch">
+    <button data-s="dash" class="active">Tableau de bord</button>
+    <button data-s="treso">Trésorerie</button>
+    <button data-s="factu">Facturation</button>
+    <button data-s="point">Pointage (mobile)</button>
+  </div>
+</div>
+
+<div class="stage">
+
+  <!-- ============ DASHBOARD ============ -->
+  <section class="screen active" id="dash">
+    <div class="screen-intro">
+      <h2>Tableau de bord <span class="badge-crit">🔴 CRITIQUE</span></h2>
+      <p>3 zones au lieu de 8. On supprime les sparklines, la « tournée des chantiers » et le jargon financier. Le patron voit en 5 secondes ce qui demande son attention, son cash, et les 3 chantiers à surveiller.</p>
+    </div>
+
+    <div style="margin-bottom:6px;display:flex;align-items:baseline;gap:10px;">
+      <h3 style="font-size:18px;">Bonjour Karim</h3>
+      <span class="mono" style="font-size:11px;color:var(--ink3);">vendredi 31 mai 2026</span>
+    </div>
+
+    <!-- attention -->
+    <div class="attn-banner" style="margin:14px 0;">
+      <div class="eyebrow" style="color:oklch(0.50 0.10 75);margin-bottom:10px;">⚠️ 3 choses demandent votre attention</div>
+      <div class="grid3">
+        <div class="card" style="padding:12px;cursor:pointer;">
+          <div style="font-size:12px;color:var(--ink2);">2 BC à valider</div>
+          <div class="num" style="font-size:18px;margin-top:4px;">501 K DH</div>
+        </div>
+        <div class="card" style="padding:12px;cursor:pointer;">
+          <div style="font-size:12px;color:var(--ink2);">À relancer (&gt;60j)</div>
+          <div class="num" style="font-size:18px;margin-top:4px;color:var(--red);">23,1 M DH</div>
+        </div>
+        <div class="card" style="padding:12px;cursor:pointer;">
+          <div style="font-size:12px;color:var(--ink2);">Caution expire 18 j</div>
+          <div class="num" style="font-size:18px;margin-top:4px;">4,2 M <span class="mono" style="font-size:10px;color:var(--ink3);">BMCE</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- cash -->
+    <div class="eyebrow" style="margin:18px 0 8px;">💰 Cash</div>
+    <div class="grid3">
+      <div class="card kpi"><div class="lbl">Encaissé · mai</div><div class="val">47,8 M <span class="mono" style="font-size:11px;color:var(--green);">▲12%</span></div><div class="sub">14 règlements reçus</div></div>
+      <div class="card kpi"><div class="lbl">À encaisser</div><div class="val">198 M</div><div class="sub">dont <b style="color:var(--red);">23 M en retard</b></div></div>
+      <div class="card kpi"><div class="lbl">Marge moyenne</div><div class="val">14,2 %</div><div class="sub">cible 13 % · au-dessus</div></div>
+    </div>
+
+    <!-- two lists -->
+    <div class="grid2" style="margin-top:18px;">
+      <div class="card">
+        <div style="padding:13px 16px;border-bottom:1px solid var(--line);"><h3 style="font-size:13.5px;">🏗 Chantiers à surveiller</h3></div>
+        <div class="listrow"><span class="pill red"><span class="dot"></span></span><div class="grow"><div style="font-weight:500;font-size:13px;">AGD-033 · Hôtel Taghazout</div><div style="font-size:11.5px;color:var(--ink3);">Budget gros œuvre +7 %</div></div><span class="pill red">retard</span></div>
+        <div class="listrow"><span class="pill red"><span class="dot"></span></span><div class="grow"><div style="font-weight:500;font-size:13px;">RBT-208 · Tramway</div><div style="font-size:11.5px;color:var(--ink3);">OS n°14 non signé</div></div><span class="pill red">bloqué</span></div>
+        <div class="listrow"><span class="pill amber"><span class="dot"></span></span><div class="grow"><div style="font-weight:500;font-size:13px;">TNG-061 · Port Tanger Med</div><div style="font-size:11.5px;color:var(--ink3);">CNSS sous-traitant à renouveler</div></div><span class="pill amber">à faire</span></div>
+      </div>
+      <div class="card">
+        <div style="padding:13px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;"><h3 style="font-size:13.5px;">📋 À valider</h3><a class="mono" style="font-size:10.5px;color:var(--ocreDeep);">voir tout →</a></div>
+        <div class="listrow"><span class="ic" style="background:var(--ocreSoft);color:var(--ocreDeep);">BC</span><div class="grow"><div style="font-weight:500;font-size:13px;">Ferraille TOR — 28t</div><div class="mono" style="font-size:10px;color:var(--ink3);">CSB-114 · 412 K DH</div></div><button class="btn ocre sm">✓</button><button class="btn sm">✗</button></div>
+        <div class="listrow"><span class="ic" style="background:var(--ocreSoft);color:var(--ocreDeep);">BC</span><div class="grow"><div style="font-weight:500;font-size:13px;">Location grue 60m</div><div class="mono" style="font-size:10px;color:var(--ink3);">RBT-208 · 89 K DH</div></div><button class="btn ocre sm">✓</button><button class="btn sm">✗</button></div>
+        <div class="listrow"><span class="ic" style="background:var(--blueSoft);color:var(--blue);">SIT</span><div class="grow"><div style="font-weight:500;font-size:13px;">Situation n°6</div><div class="mono" style="font-size:10px;color:var(--ink3);">CSB-114 · 6,24 M DH</div></div><button class="btn ocre sm">✓</button><button class="btn sm">✗</button></div>
+      </div>
+    </div>
+    <p class="note">Avant : 35–45 blocs simultanés (4 KPI à sparklines, 4 alertes, 3 tableaux, 3 colonnes, 2 modales « grand groupe »). Après : 3 zones, ~12 blocs, tout est actionnable.</p>
+  </section>
+
+  <!-- ============ TRESORERIE ============ -->
+  <section class="screen" id="treso">
+    <div class="screen-intro">
+      <h2>Trésorerie <span class="badge-crit">🔴 CRITIQUE</span></h2>
+      <p>La question n°1 du patron PME. On remonte le solde + la prévision + « qui me paie / qui je paie ». Le vocabulaire DAF (DSO, DPO, BFR, rapprochement) part dans un onglet « Compta » séparé.</p>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:10px;">
+      <div><div class="eyebrow">Solde aujourd'hui · consolidé</div>
+        <div class="num" style="font-size:40px;margin-top:6px;">8,42 M <span class="mono" style="font-size:14px;color:var(--ink3);">DH</span></div>
+        <div class="mono" style="font-size:11px;color:var(--ink3);margin-top:4px;">BMCE 4,1 · Attijari 3,0 · Banque Pop. 1,3</div>
+      </div>
+      <div style="display:flex;gap:6px;"><button class="btn">Comptes</button><button class="btn">Compta »</button></div>
+    </div>
+
+    <!-- prevision -->
+    <div class="card" style="padding:18px;margin-top:18px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <h3 style="font-size:13.5px;">Prévision · 8 semaines</h3>
+        <span class="pill amber"><span class="dot"></span>creux S+3 : −1,2 M</span>
+      </div>
+      <div class="spark">
+        <div style="height:40%;background:var(--greenSoft);"></div>
+        <div style="height:58%;background:var(--greenSoft);"></div>
+        <div style="height:72%;background:var(--ocreSoft);"></div>
+        <div style="height:30%;background:var(--redSoft);"></div>
+        <div style="height:22%;background:var(--redSoft);"></div>
+        <div style="height:48%;background:var(--ocreSoft);"></div>
+        <div style="height:66%;background:var(--greenSoft);"></div>
+        <div style="height:80%;background:var(--greenSoft);"></div>
+      </div>
+      <div class="legend"><span><i class="sq" style="background:var(--green);"></i>excédent</span><span><i class="sq" style="background:var(--amber);"></i>tendu</span><span><i class="sq" style="background:var(--red);"></i>creux</span></div>
+    </div>
+
+    <!-- in / out -->
+    <div class="grid2" style="margin-top:18px;">
+      <div class="card">
+        <div style="padding:13px 16px;border-bottom:1px solid var(--line);"><h3 style="font-size:13.5px;color:var(--green);">⬇ Entrées attendues</h3></div>
+        <div class="listrow"><div class="grow"><div style="font-weight:500;font-size:13px;">Résidence El Manar</div><div class="mono" style="font-size:10px;color:var(--ink3);">facture · 5 juin</div></div><span class="amt" style="color:var(--green);">+142 K</span></div>
+        <div class="listrow"><div class="grow"><div style="font-weight:500;font-size:13px;">Effet M. Idrissi</div><div class="mono" style="font-size:10px;color:var(--ink3);">effet · 12 juin</div></div><span class="amt" style="color:var(--green);">+72 K</span></div>
+        <div class="listrow"><div class="grow"><div style="font-weight:500;font-size:13px;">STÉ Maroc Distrib.</div><div class="mono" style="font-size:10px;color:var(--ink3);">facture · 19 juin</div></div><span class="amt" style="color:var(--green);">+218 K</span></div>
+      </div>
+      <div class="card">
+        <div style="padding:13px 16px;border-bottom:1px solid var(--line);"><h3 style="font-size:13.5px;color:var(--red);">⬆ Sorties prévues</h3></div>
+        <div class="listrow"><div class="grow"><div style="font-weight:500;font-size:13px;">Paie mai</div><div class="mono" style="font-size:10px;color:var(--ink3);">30 mai</div></div><span class="amt" style="color:var(--red);">−1,9 M</span></div>
+        <div class="listrow"><div class="grow"><div style="font-weight:500;font-size:13px;">CIMAR (ciment)</div><div class="mono" style="font-size:10px;color:var(--ink3);">échéance · 8 juin</div></div><span class="amt" style="color:var(--red);">−560 K</span></div>
+        <div class="listrow"><div class="grow"><div style="font-weight:500;font-size:13px;">Sous-traitant SOTRAVO</div><div class="mono" style="font-size:10px;color:var(--ink3);">situation · 15 juin</div></div><span class="amt" style="color:var(--red);">−340 K</span></div>
+      </div>
+    </div>
+
+    <div class="attn-banner" style="margin-top:18px;display:flex;align-items:center;gap:12px;">
+      <span style="font-size:20px;">⚠️</span>
+      <div><b>Caution BMCE expire dans 18 jours</b> — 4,2 M DH · pensez à demander la mainlevée ou le renouvellement.</div>
+    </div>
+    <p class="note">Avant : 4 onglets (comptes/prévisionnel/budget 12 mois/rapprochement) + DSO/DPO/BFR + effets. Après : 1 décision en 1 écran, le reste en « Compta ».</p>
+  </section>
+
+  <!-- ============ FACTURATION ============ -->
+  <section class="screen" id="factu">
+    <div class="screen-intro">
+      <h2>Facturation <span class="badge-crit">🔴 CRITIQUE</span></h2>
+      <p>Déjà le meilleur module — on le resserre : 3 KPI cash (au lieu de 4), une seule liste filtrable, et une action forte « Relancer » directement sur les factures en retard (SMS/email/WhatsApp).</p>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <h3 style="font-size:18px;">Factures</h3>
+      <button class="btn primary">+ Nouvelle facture</button>
+    </div>
+
+    <div class="grid3">
+      <div class="card kpi"><div class="lbl">Encaissé · ce mois</div><div class="val" style="color:var(--green);">1,2 M <span class="mono" style="font-size:11px;">▲</span></div><div class="sub">3 règlements</div></div>
+      <div class="card kpi"><div class="lbl">En attente</div><div class="val">3,4 M</div><div class="sub">6 factures en cours</div></div>
+      <div class="card kpi dark"><div class="lbl">⚠️ En retard</div><div class="val" style="color:var(--ocre);">540 K</div><div class="sub">3 factures à relancer</div></div>
+    </div>
+
+    <!-- filters -->
+    <div style="display:flex;gap:6px;margin:18px 0 12px;flex-wrap:wrap;">
+      <button class="btn primary sm">Toutes</button>
+      <button class="btn sm">À encaisser</button>
+      <button class="btn sm">Retard</button>
+      <button class="btn sm">Payées</button>
+    </div>
+
+    <div class="card">
+      <div class="listrow"><span class="ic" style="background:var(--redSoft);color:var(--red);">FA</span>
+        <div class="grow"><div style="font-weight:500;font-size:13px;">Résidence Al Andalous</div><div class="mono" style="font-size:10px;color:var(--ink3);">FA-26-034 · échéance dépassée 6 j</div></div>
+        <span class="amt">38,9 K</span><span class="pill red" style="margin-left:10px;">retard</span><button class="btn ocre sm" style="margin-left:10px;">Relancer</button></div>
+      <div class="listrow"><span class="ic" style="background:var(--redSoft);color:var(--red);">FA</span>
+        <div class="grow"><div style="font-weight:500;font-size:13px;">M. Idrissi</div><div class="mono" style="font-size:10px;color:var(--ink3);">FA-26-033 · échéance dépassée 16 j</div></div>
+        <span class="amt">72,0 K</span><span class="pill red" style="margin-left:10px;">retard</span><button class="btn ocre sm" style="margin-left:10px;">Relancer</button></div>
+      <div class="listrow"><span class="ic" style="background:var(--blueSoft);color:var(--blue);">FA</span>
+        <div class="grow"><div style="font-weight:500;font-size:13px;">Résidence El Manar</div><div class="mono" style="font-size:10px;color:var(--ink3);">FA-26-038 · à échoir 26 j</div></div>
+        <span class="amt">142,0 K</span><span class="pill blue" style="margin-left:10px;">à échoir</span><button class="btn sm" style="margin-left:10px;">Voir</button></div>
+      <div class="listrow"><span class="ic" style="background:var(--greenSoft);color:var(--green);">FA</span>
+        <div class="grow"><div style="font-weight:500;font-size:13px;">Café Bab Sebta</div><div class="mono" style="font-size:10px;color:var(--ink3);">FA-26-032 · payée le 12 mai</div></div>
+        <span class="amt">54,3 K</span><span class="pill green" style="margin-left:10px;"><span class="dot"></span>payée</span><button class="btn sm" style="margin-left:10px;">Voir</button></div>
+    </div>
+    <p class="note">Avant : 4 KPI TTC + pipeline + 3 onglets + détail. Après : 3 chiffres cash + 1 liste + relance en 1 clic. Les devis vivent dans « Études » (source unique).</p>
+  </section>
+
+  <!-- ============ POINTAGE MOBILE ============ -->
+  <section class="screen" id="point">
+    <div class="screen-intro">
+      <h2>Pointage — mobile terrain <span class="badge-crit">🔴 CRITIQUE</span></h2>
+      <p>Le plus gros chantier de la refonte. Aujourd'hui : 45 ouvriers × 7 colonnes + 90 champs + 9 filtres, inutilisable au doigt. Demain : tout le monde « présent » par défaut, le chef ne marque QUE les absents. <b>30 secondes, 3 taps.</b></p>
+    </div>
+
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="pscroll">
+          <div class="phead">
+            <div class="eyebrow">Pointage du jour</div>
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:6px;">
+              <h3 style="font-size:16px;">CSB-114</h3>
+              <span class="mono" style="font-size:11px;color:var(--ink3);">Jeu 28 mai</span>
+            </div>
+            <div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
+              <span class="num" style="font-size:20px;color:var(--green);" id="pcount">42</span>
+              <span style="font-size:13px;color:var(--ink3);">/ 45 présents</span>
+            </div>
+          </div>
+
+          <!-- workers -->
+          <div class="wkr"><div class="av">MA</div><div class="grow"><div style="font-weight:500;font-size:14px;">Mohamed Aït Hssaine</div><div style="font-size:11.5px;color:var(--ink3);">Coffreur</div></div><button class="tgl present" onclick="togglePt(this)">✓ Présent</button></div>
+          <div class="wkr"><div class="av" style="background:var(--redSoft);color:var(--red);">SB</div><div class="grow"><div style="font-weight:500;font-size:14px;">Said Berrada</div><div style="font-size:11.5px;color:var(--ink3);">Coffreur</div><div class="motif">motif : maladie ▾</div></div><button class="tgl absent" onclick="togglePt(this)">✗ Absent</button></div>
+          <div class="wkr"><div class="av">AB</div><div class="grow"><div style="font-weight:500;font-size:14px;">Abdelaziz Boutaleb</div><div style="font-size:11.5px;color:var(--ink3);">Ferrailleur</div></div><button class="tgl present" onclick="togglePt(this)">✓ Présent</button></div>
+          <div class="wkr"><div class="av">KM</div><div class="grow"><div style="font-weight:500;font-size:14px;">Khalid Mouline</div><div style="font-size:11.5px;color:var(--ink3);">Ferrailleur</div></div><button class="tgl present" onclick="togglePt(this)">✓ Présent</button></div>
+          <div class="wkr"><div class="av" style="background:var(--redSoft);color:var(--red);">HT</div><div class="grow"><div style="font-weight:500;font-size:14px;">Hassan Touimi</div><div style="font-size:11.5px;color:var(--ink3);">Manœuvre</div><div class="motif">motif : congé ▾</div></div><button class="tgl absent" onclick="togglePt(this)">✗ Absent</button></div>
+          <div class="wkr"><div class="av">AC</div><div class="grow"><div style="font-weight:500;font-size:14px;">Abdellah Chikhi</div><div style="font-size:11.5px;color:var(--ink3);">Grutier</div></div><button class="tgl present" onclick="togglePt(this)">✓ Présent</button></div>
+          <div class="wkr"><div class="av">RB</div><div class="grow"><div style="font-weight:500;font-size:14px;">Rachid Bennani</div><div style="font-size:11.5px;color:var(--ink3);">Maçon</div></div><button class="tgl present" onclick="togglePt(this)">✓ Présent</button></div>
+
+          <div class="sticky-cta"><button onclick="alert('Pointage clôturé et envoyé à la paie ✓')">CLÔTURER · <span id="pabs">3</span> absents</button></div>
+        </div>
+      </div>
+    </div>
+    <p class="note" style="text-align:center;">Heures supplémentaires → écran « paie » séparé (ce n'est pas du pointage). Les 6 filtres métier → réservés aux rapports RH, pas à la saisie terrain.</p>
+  </section>
+
+</div>
+
+<script>
+  // screen switcher
+  document.querySelectorAll('.switch button').forEach(b=>{
+    b.onclick=()=>{
+      document.querySelectorAll('.switch button').forEach(x=>x.classList.remove('active'));
+      document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+      document.getElementById(b.dataset.s).classList.add('active');
+      window.scrollTo({top:0,behavior:'smooth'});
+    };
+  });
+  // pointage demo toggle
+  function togglePt(btn){
+    const present = btn.classList.contains('present');
+    const wkr = btn.closest('.wkr');
+    const av = wkr.querySelector('.av');
+    let motif = wkr.querySelector('.motif');
+    if(present){
+      btn.classList.remove('present');btn.classList.add('absent');btn.textContent='✗ Absent';
+      av.style.background='var(--redSoft)';av.style.color='var(--red)';
+      if(!motif){motif=document.createElement('div');motif.className='motif';motif.textContent='motif : à préciser ▾';wkr.querySelector('.grow').appendChild(motif);}
+    }else{
+      btn.classList.remove('absent');btn.classList.add('present');btn.textContent='✓ Présent';
+      av.style.background='var(--ocreSoft)';av.style.color='var(--ocreDeep)';
+      if(motif)motif.remove();
+    }
+    // recount
+    const abs = document.querySelectorAll('#point .tgl.absent').length;
+    document.getElementById('pcount').textContent = 45 - abs;
+    document.getElementById('pabs').textContent = abs;
+  }
+</script>
+</body>
+</html>
