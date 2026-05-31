@@ -99,7 +99,6 @@ function Tresorerie() {
   const totalEnc = FLUX.filter(f => f.sens === 'in').reduce((s, f) => s + f.mt, 0);
   const totalDec = FLUX.filter(f => f.sens === 'out').reduce((s, f) => s + f.mt, 0);
   const cautionsEngagees = CAUTIONS.filter(c => c.status !== 'liberable').reduce((s, c) => s + c.montant, 0);
-  const position = soldeTotal + totalEnc - totalDec;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
@@ -122,14 +121,12 @@ function Tresorerie() {
         </div>
       </div>
 
-      {/* KPI strip — 6 cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12 }}>
+      {/* KPI strip — 4 chiffres (refonte UX : DSO/DPO déplacés en Compta) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
         <TresoKpi label="SOLDE DISPONIBLE" value={fmtMAD(soldeTotal)} unit="DH" sub={`+ ${fmtMAD(ligneTotal)} de lignes autorisées`} tone="ink" delay={60} />
         <TresoKpi label="ENCAISSEMENTS PRÉVUS" value={fmtMAD(totalEnc)} unit="DH" sub="sous 4 semaines" tone="green" delay={120} />
         <TresoKpi label="DÉCAISSEMENTS PRÉVUS" value={fmtMAD(totalDec)} unit="DH" sub="paie, achats, traites" tone="amber" delay={180} />
         <TresoKpi label="CAUTIONS ENGAGÉES" value={fmtMAD(cautionsEngagees)} unit="DH" sub={`${CAUTIONS.filter(c => c.status !== 'liberable').length} cautions actives`} tone="blue" delay={240} />
-        <TresoKpi label="DSO CLIENTS" value="68" unit="jours" sub="délai moyen encaissement" tone="ocre" delay={300} />
-        <TresoKpi label="DPO FOURNISSEURS" value="45" unit="jours" sub="délai moyen paiement" tone="neutral" delay={360} />
       </div>
 
       {/* Comptes */}
@@ -160,13 +157,12 @@ function Tresorerie() {
       {/* Prévisionnel 8 semaines */}
       <PreviChart soldeStart={soldeTotal} />
 
-      {/* Tabs */}
+      {/* Tabs — refonte UX : l'opérationnel d'abord, la compta regroupée */}
       <div style={{ display: 'flex', gap: 4, borderBottom: `1px solid ${TOKENS.line}` }} className="erp-fade-in">
         {[
           ['flux', 'Échéancier de trésorerie'],
           ['cautions', `Cautions bancaires (${CAUTIONS.length})`],
-          ['budget', 'Budget 12 mois'],
-          ['rapprochement', 'Rapprochement bancaire'],
+          ['compta', 'Compta »'],
         ].map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)} style={{
             padding: '10px 16px', background: 'transparent', border: 'none',
@@ -177,10 +173,46 @@ function Tresorerie() {
         ))}
       </div>
 
-      {tab === 'flux'           && <FluxTable />}
-      {tab === 'cautions'       && <CautionsSection />}
-      {tab === 'budget'         && <BudgetTable />}
-      {tab === 'rapprochement'  && <RapprochementView />}
+      {tab === 'flux'     && <FluxTable />}
+      {tab === 'cautions' && <CautionsSection />}
+      {tab === 'compta'   && <ComptaSection />}
+    </div>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// Refonte UX — onglet « Compta » : regroupe budget 12 mois, rapprochement
+// et ratios DSO/DPO/BFR (vocabulaire DAF isolé de la vue patron)
+function ComptaSection() {
+  const [sub, setSub] = React.useState('budget'); // budget | rapprochement
+  const ratios = [
+    { label: 'DSO CLIENTS', value: '68', unit: 'jours', sub: 'délai moyen encaissement', tone: 'ocre' },
+    { label: 'DPO FOURNISSEURS', value: '45', unit: 'jours', sub: 'délai moyen paiement', tone: 'neutral' },
+    { label: 'BFR ESTIMÉ', value: '9,4', unit: 'M DH', sub: 'créances − dettes', tone: 'blue' },
+  ];
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* Ratios financiers */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+        {ratios.map((r, i) => <TresoKpi key={r.label} {...r} delay={i * 60} />)}
+      </div>
+      {/* Sub-toggle budget / rapprochement */}
+      <div style={{ display: 'flex', gap: 4, background: TOKENS.bgWarm, borderRadius: 6, padding: 2, alignSelf: 'flex-start' }}>
+        {[['budget', 'Budget 12 mois'], ['rapprochement', 'Rapprochement bancaire']].map(([id, label]) => {
+          const active = sub === id;
+          return (
+            <button key={id} onClick={() => setSub(id)} style={{
+              padding: '7px 14px', borderRadius: 4, border: 'none', cursor: 'pointer',
+              background: active ? TOKENS.paper : 'transparent',
+              color: active ? TOKENS.ink : TOKENS.ink3,
+              fontFamily: 'IBM Plex Sans', fontSize: 12.5, fontWeight: active ? 600 : 400,
+              boxShadow: active ? '0 1px 2px rgba(26,24,20,0.08)' : 'none',
+            }}>{label}</button>
+          );
+        })}
+      </div>
+      {sub === 'budget' && <BudgetTable />}
+      {sub === 'rapprochement' && <RapprochementView />}
     </div>
   );
 }
