@@ -44,8 +44,7 @@ const STATUS_MAP = {
 
 const WORKFLOW_STEPS = [
   { id: 'demande',         label: 'Demande',         icon: 'doc' },
-  { id: 'attente-cond',    label: 'Conducteur',      icon: 'helmet' },
-  { id: 'attente-centre',  label: 'Chef centre',     icon: 'user' },
+  { id: 'validation',      label: 'Validation chantier', icon: 'helmet' },
   { id: 'attente-dg',      label: 'Direction',       icon: 'shield' },
   { id: 'emis',            label: 'BC émis',         icon: 'purchase' },
   { id: 'recu',            label: 'Réception',       icon: 'truck' },
@@ -124,13 +123,11 @@ function Achats() {
         </div>
       </div>
 
-      {/* KPI strip */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+      {/* KPI strip — refonte UX : 3 chips (au lieu de 5) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
         <Kpi label="À VALIDER" value={attente} sub={`dont ${urgent} urgent${urgent > 1 ? 's' : ''}`} delay={60} tone={urgent ? 'amber' : 'neutral'} active={tab === 'valider'} onClick={() => setTab('valider')} />
-        <Kpi label="ATTENTE DIRECTION" value={ecart} sub="> 800 000 DH" delay={120} tone="red" />
-        <Kpi label="BC ÉMIS — EN LIVRAISON" value={emis} sub="à recevoir cette semaine" delay={180} tone="blue" active={tab === 'emis'} onClick={() => setTab('emis')} />
-        <Kpi label="RÉCEPTIONS / FACTURÉ" value={BCS.filter(b => b.status === 'recu' || b.status === 'facture').length} sub="ce mois" delay={240} tone="green" active={tab === 'livraisons'} onClick={() => setTab('livraisons')} />
-        <Kpi label="ENGAGÉ — MAI 2026" value={fmtMAD(mois)} sub="DH HT · 9 chantiers" delay={300} tone="ink" />
+        <Kpi label="BC ÉMIS — EN LIVRAISON" value={emis} sub="à recevoir cette semaine" delay={120} tone="blue" active={tab === 'emis'} onClick={() => setTab('emis')} />
+        <Kpi label="ENGAGÉ — MAI 2026" value={fmtMAD(mois)} sub="DH HT · 9 chantiers" delay={180} tone="ink" />
       </div>
 
       {/* Filter bar */}
@@ -353,8 +350,9 @@ function BCDetail({ bc, onClose, onReception }) {
   // Reconstruct workflow path
   const events = [];
   events.push({ step: 'demande', date: bc.date, who: bc.demandeur, done: true });
-  events.push({ step: 'attente-cond', date: bc.date, who: 'K. Benjelloun', done: ['attente-centre', 'attente-dg', 'emis', 'recu', 'facture'].includes(bc.status) });
-  events.push({ step: 'attente-centre', date: bc.date, who: 'M. Tahiri', done: ['attente-dg', 'emis', 'recu', 'facture'].includes(bc.status) });
+  events.push({ step: 'validation', date: bc.date, who: 'Conducteur / chef de centre',
+    done: ['attente-dg', 'emis', 'recu', 'facture'].includes(bc.status),
+    current: bc.status === 'attente-cond' || bc.status === 'attente-centre' });
   if (bc.montant >= 800_000) {
     events.push({ step: 'attente-dg', date: bc.emisLe || '—', who: 'DG · K. Bensaïd', done: ['emis', 'recu', 'facture'].includes(bc.status) });
   }
@@ -494,7 +492,7 @@ function Timeline({ events, status, montant }) {
     <div style={{ position: 'relative', paddingLeft: 18 }}>
       <div style={{ position: 'absolute', left: 7, top: 8, bottom: 8, width: 1, background: TOKENS.line2 }} />
       {visible.map((ev, i) => {
-        const cur = ev.step === status;
+        const cur = ev.current != null ? ev.current : ev.step === status;
         const step = WORKFLOW_STEPS.find(s => s.id === ev.step);
         return (
           <div key={i} style={{ position: 'relative', paddingBottom: i < visible.length - 1 ? 12 : 0 }}>
