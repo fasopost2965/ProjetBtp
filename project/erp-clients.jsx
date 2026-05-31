@@ -26,6 +26,7 @@ const SEED_CLIENTS = [
 
 // -----------------------------------------------------------------------------
 function Clients() {
+  const store = window.useStore ? window.useStore() : null;
   const [list, setList]     = React.useState(SEED_CLIENTS);
   const [filter, setFilter] = React.useState('all');
   const [q, setQ]           = React.useState('');
@@ -142,7 +143,9 @@ function Clients() {
 
       {/* Create modal */}
       {createOpen && <NewClientModal onClose={() => setCreateOpen(false)} onCreate={(c) => {
-        setList(l => [{ ...c, id: Date.now() }, ...l]);
+        const newClient = { ...c, id: Date.now() };
+        setList(l => [newClient, ...l]);
+        store?.addClient?.(newClient);
         window.toast('Client créé', 'success', c.name);
         setCreateOpen(false);
       }} />}

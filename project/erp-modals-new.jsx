@@ -94,7 +94,26 @@ function NewChantierModal({ onClose }) {
 // -----------------------------------------------------------------------------
 // 2. NOUVEAU DEVIS (Études)
 // -----------------------------------------------------------------------------
+function ClientChips({ clients, selected, onPick }) {
+  if (!clients.length) return null;
+  return (
+    <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 6 }}>
+      {clients.slice(0, 6).map(c => (
+        <button key={c.name} onClick={() => onPick(c.name)} style={{
+          padding: '3px 10px', border: `1px solid ${selected === c.name ? TOKENS.ocreDeep : TOKENS.line2}`,
+          borderRadius: 999, background: selected === c.name ? TOKENS.ocreSoft : 'transparent',
+          fontFamily: 'IBM Plex Mono', fontSize: 9.5,
+          color: selected === c.name ? TOKENS.ocreDeep : TOKENS.ink3,
+          cursor: 'pointer', transition: 'all 120ms ease',
+        }}>{c.name}</button>
+      ))}
+    </div>
+  );
+}
+
 function NewDevisModal({ onClose }) {
+  const store = window.useStore ? window.useStore() : null;
+  const storeClients = store?.data?.clients || [];
   const [form, setForm] = React.useState({
     method: 'simulator', client: '', name: '',
     type: 'villa-r1', surface: 280, finit: 'std',
@@ -137,6 +156,7 @@ function NewDevisModal({ onClose }) {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
         <FieldGroup label="Client / Prospect" required>
           <TextInput value={form.client} onChange={(v) => upd('client', v)} placeholder="SCI Atlas Habitat" />
+          <ClientChips clients={storeClients} selected={form.client} onPick={(n) => upd('client', n)} />
         </FieldGroup>
         <FieldGroup label="Intitulé du projet" required>
           <TextInput value={form.name} onChange={(v) => upd('name', v)} placeholder="Villa R+1 — M. Lahlou" />
@@ -187,6 +207,8 @@ function NewDevisModal({ onClose }) {
 // 3. NOUVELLE FACTURE
 // -----------------------------------------------------------------------------
 function NewFactureModal({ onClose }) {
+  const store = window.useStore ? window.useStore() : null;
+  const storeClients = store?.data?.clients || [];
   const [form, setForm] = React.useState({
     source: 'libre', client: '', chantier: '',
     montantHT: '', mode: 'virement', echeanceJ: 30,
@@ -250,6 +272,7 @@ function NewFactureModal({ onClose }) {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
         <FieldGroup label="Client" required>
           <TextInput value={form.client} onChange={(v) => upd('client', v)} placeholder="Résidence El Manar" />
+          <ClientChips clients={storeClients} selected={form.client} onPick={(n) => upd('client', n)} />
         </FieldGroup>
         <FieldGroup label="Chantier rattaché">
           <TextInput value={form.chantier} onChange={(v) => upd('chantier', v)} placeholder="Réhab. immeuble Bd Zerktouni" />
