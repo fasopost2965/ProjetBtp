@@ -68,29 +68,29 @@ const CASH = [4.2, 3.8, 4.1, 5.2, 4.9, 5.7, 6.1, 5.4, 5.9, 6.8, 7.2, 7.6];
 // -----------------------------------------------------------------------------
 function Dashboard() {
   const [hebdo, setHebdo] = React.useState(false);
-  const [tournee, setTournee] = React.useState(false);
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <DashHeader onHebdo={() => setHebdo(true)} onTournee={() => setTournee(true)} />
+      {/* Refonte UX — 3 zones : attention → cash → listes courtes */}
+      <DashHeader onHebdo={() => setHebdo(true)} />
+      <AttentionBanner />
       <KpiRow />
-      <AlertsStrip />
       <div style={{ display: 'grid', gridTemplateColumns: '1.55fr 1fr', gap: 24 }}>
         <SitesTable />
         <Validations />
       </div>
+      {/* Zone secondaire (détail opérationnel) */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 24 }}>
         <Cautions />
         <Pointage />
         <Activity />
       </div>
       <HebdoModal open={hebdo} onClose={() => setHebdo(false)} />
-      <TourneeModal open={tournee} onClose={() => setTournee(false)} />
     </div>
   );
 }
 
 // -----------------------------------------------------------------------------
-function DashHeader({ onHebdo, onTournee }) {
+function DashHeader({ onHebdo }) {
   return (
     <div className="erp-fade-in" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', paddingTop: 4 }}>
       <div>
@@ -98,12 +98,45 @@ function DashHeader({ onHebdo, onTournee }) {
           JEUDI 28 MAI 2026 · S22
         </div>
         <h1 style={{ fontFamily: 'Manrope', fontWeight: 700, fontSize: 30, margin: 0, letterSpacing: '-0.025em', color: TOKENS.ink, lineHeight: 1.15 }}>
-          Bonjour Karim. <span style={{ color: TOKENS.ink3, fontWeight: 500 }}>34 chantiers actifs · 6 demandent votre attention.</span>
+          Bonjour Karim. <span style={{ color: TOKENS.ink3, fontWeight: 500 }}>34 chantiers actifs.</span>
         </h1>
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
         <Button onClick={onHebdo} icon={<Icon name="doc" size={14} stroke={TOKENS.ink2} />}>Rapport hebdo</Button>
-        <Button onClick={onTournee} variant="primary" iconRight={<Icon name="arrowRight" size={14} stroke={TOKENS.bg} />}>Tournée chantiers</Button>
+      </div>
+    </div>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// Refonte UX — bandeau « ce qui demande votre attention » (priorité n°1 patron)
+function AttentionBanner() {
+  const items = [
+    { label: '2 BC à valider', value: '501 K', unit: 'DH', tone: TOKENS.ink, hash: 'achats' },
+    { label: 'À relancer · >60 j', value: '23,1 M', unit: 'DH', tone: TOKENS.red, hash: 'factures' },
+    { label: 'Caution expire dans 18 j', value: '4,2 M', unit: 'DH · BMCE', tone: TOKENS.ink, hash: 'tresorerie' },
+  ];
+  return (
+    <div className="erp-fade-in" style={{
+      background: TOKENS.amberSoft, border: `1px solid ${TOKENS.amber}`, borderLeft: `4px solid ${TOKENS.amber}`,
+      borderRadius: 10, padding: '14px 16px',
+    }}>
+      <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 10.5, letterSpacing: '0.12em', color: 'oklch(0.50 0.10 75)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <Icon name="warning" size={13} stroke="oklch(0.50 0.10 75)" /> 3 CHOSES DEMANDENT VOTRE ATTENTION
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+        {items.map((it, i) => (
+          <button key={i} onClick={() => { window.location.hash = it.hash; }} className="erp-card hoverable" style={{
+            textAlign: 'left', cursor: 'pointer', background: TOKENS.paper, border: `1px solid ${TOKENS.line}`,
+            borderRadius: 8, padding: '12px 14px',
+          }}>
+            <div style={{ fontSize: 12, color: TOKENS.ink2, marginBottom: 5 }}>{it.label}</div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+              <span style={{ fontFamily: 'Manrope', fontWeight: 700, fontSize: 19, color: it.tone, letterSpacing: '-0.02em' }}>{it.value}</span>
+              <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, color: TOKENS.ink3 }}>{it.unit}</span>
+            </div>
+          </button>
+        ))}
       </div>
     </div>
   );
@@ -111,22 +144,22 @@ function DashHeader({ onHebdo, onTournee }) {
 
 // -----------------------------------------------------------------------------
 function KpiRow() {
+  // Refonte UX — 3 chiffres cash, sans sparkline (densité réduite)
   const items = [
-    { label: 'CHIFFRE D\'AFFAIRES · MAI', value: '47,8', unit: 'M DH', delta: 12, deltaLabel: 'vs avril', spark: [3,3.2,3.5,3.4,3.8,4.1,4.0,4.3,4.5,4.7,4.6,4.78], sparkColor: TOKENS.green },
-    { label: 'ENGAGEMENTS EN COURS', value: '198,4', unit: 'M DH', delta: -3, deltaLabel: '5 BC à valider', spark: [6,5.8,6.1,5.9,5.7,5.5,5.2,5.0,5.1,4.9,4.8,4.85], sparkColor: TOKENS.amber },
-    { label: 'MARGE BRUTE MOYENNE', value: '14,2', unit: '%', delta: 2, deltaLabel: 'cible 13%', spark: [11,11.5,12,12.3,12.8,13,13.4,13.6,13.9,14.0,14.1,14.2], sparkColor: TOKENS.ocre },
-    { label: 'CRÉANCES > 60J', value: '23,1', unit: 'M DH', delta: 8, deltaLabel: 'à relancer', spark: [18,19,20,20.5,21,21.5,22,22.3,22.8,22.9,23.0,23.1], sparkColor: TOKENS.red },
+    { label: 'ENCAISSÉ · MAI', value: '47,8', unit: 'M DH', delta: 12, deltaLabel: 'vs avril' },
+    { label: 'À ENCAISSER', value: '198', unit: 'M DH', delta: null, sub: 'dont 23 M en retard' },
+    { label: 'MARGE MOYENNE', value: '14,2', unit: '%', delta: 2, deltaLabel: 'cible 13 % · au-dessus' },
   ];
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
-      {items.map((kpi, i) => (
-        <Card key={i} padding={20} hoverable delay={60 * i}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <Stat label={kpi.label} value={kpi.value} unit={kpi.unit} delta={kpi.delta} deltaLabel={kpi.deltaLabel} />
-            <Sparkline data={kpi.spark} color={kpi.sparkColor} fill={`color-mix(in oklch, ${kpi.sparkColor} 12%, transparent)`} width={88} height={40} />
-          </div>
-        </Card>
-      ))}
+    <div>
+      <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 10.5, color: TOKENS.ocreDeep, letterSpacing: '0.12em', marginBottom: 10 }}>💰 CASH</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+        {items.map((kpi, i) => (
+          <Card key={i} padding={20} hoverable delay={60 * i}>
+            <Stat label={kpi.label} value={kpi.value} unit={kpi.unit} delta={kpi.delta} deltaLabel={kpi.deltaLabel} sub={kpi.sub} />
+          </Card>
+        ))}
+      </div>
     </div>
   );
 }
