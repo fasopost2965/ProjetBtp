@@ -65,7 +65,14 @@ function Rapports() {
   const [view, setView] = React.useState('hub');
   const [reportId, setReportId] = React.useState(null);
 
-  const open = (id) => { setReportId(id); setView('template'); };
+  // Certains "rapports" pointent vers un module dédié (ex: C1 → Situations)
+  const LINKS = {};
+  Object.values(REPORTS).forEach(g => g.items.forEach(it => { if (it.link) LINKS[it.id] = it.link; }));
+
+  const open = (id) => {
+    if (LINKS[id]) { window.location.hash = LINKS[id]; return; }
+    setReportId(id); setView('template');
+  };
   const back = () => setView('hub');
 
   if (view === 'template') {
@@ -79,6 +86,12 @@ function Rapports() {
     if (reportId === 'F3') return <ReportF3 onBack={back} />;
     if (reportId === 'C8') return <ReportC8 onBack={back} />;
     if (reportId === 'R6') return <ReportR6 onBack={back} />;
+    // Moteur data-driven : tous les autres rapports (définitions + exports réels)
+    const defs = window.RAPPORT_DEFS || {};
+    if (defs[reportId] && window.RapportEngine) {
+      const def = defs[reportId]();
+      return <window.RapportEngine.ReportRenderer def={def} onBack={back} />;
+    }
     return <ReportStub onBack={back} id={reportId} />;
   }
   return <RapportsHub onOpen={open} />;
@@ -262,10 +275,20 @@ function ReportCard({ report, accent, onClick, delay }) {
 // Shared — A4 page wrapper, letterhead
 // -----------------------------------------------------------------------------
 function ReportShell({ onBack, code, category, title, children, period }) {
-  const exp = (fmt) => window.toast(`Export ${fmt} en cours`, 'info', `${code} · ${title}`);
+  // Exports réels via le moteur si une définition data existe pour ce code
+  const exp = (fmt) => {
+    const defs = window.RAPPORT_DEFS || {};
+    if (defs[code] && window.RapportEngine) {
+      window.RapportEngine.exportReport(defs[code](), fmt);
+    } else if (fmt === 'pdf') {
+      window.print();
+    } else {
+      window.toast('Export indisponible pour ce template', 'warn', `${code} · ${title}`);
+    }
+  };
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <div className="erp-fade-in" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="erp-fade-in" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
         <button onClick={onBack} className="erp-pill-btn" style={{
           background: 'transparent', border: 'none', color: TOKENS.ink3,
           fontSize: 12, padding: '4px 8px', marginLeft: -8, cursor: 'pointer',
@@ -274,11 +297,11 @@ function ReportShell({ onBack, code, category, title, children, period }) {
           <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 13 }}>←</span>
           Bibliothèque
         </button>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <Button onClick={() => window.toast('Paramètres du rapport', 'info', 'Sélection période, chantiers')}>Paramètres</Button>
-          <Button onClick={() => exp('Excel')} icon={<Icon name="doc" size={13} stroke={TOKENS.ink2} />}>Excel</Button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <Button onClick={() => exp('csv')} icon={<Icon name="doc" size={13} stroke={TOKENS.ink2} />}>CSV</Button>
+          <Button onClick={() => exp('excel')} icon={<Icon name="doc" size={13} stroke={TOKENS.ink2} />}>Excel</Button>
           <Button onClick={() => { window.print(); }} icon={<Icon name="doc" size={13} stroke={TOKENS.ink2} />}>Imprimer</Button>
-          <Button onClick={() => exp('PDF')} variant="primary" iconRight={<Icon name="arrowRight" size={13} stroke={TOKENS.bg} />}>
+          <Button onClick={() => exp('pdf')} variant="primary" iconRight={<Icon name="arrowRight" size={13} stroke={TOKENS.bg} />}>
             Télécharger PDF
           </Button>
         </div>
