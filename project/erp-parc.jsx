@@ -185,13 +185,12 @@ function Parc() {
         </div>
       </div>
 
-      {/* KPI strip */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12 }}>
-        <PcKpi label="PARC TOTAL" value={total} sub="engins suivis" delay={60} active={statusFilter === 'all'} onClick={() => setStatusFilter('all')} />
-        <PcKpi label="EN SERVICE" value={service} sub="affectés chantier" tone="green" delay={120} active={statusFilter === 'service'} onClick={() => setStatusFilter('service')} />
-        <PcKpi label="DISPONIBLES" value={dispo} sub="au parc" tone="blue" delay={180} active={statusFilter === 'dispo'} onClick={() => setStatusFilter('dispo')} />
-        <PcKpi label="IMMOBILISÉS" value={indispo} sub="maint. / panne" tone="red" delay={240} active={statusFilter === 'panne'} onClick={() => setStatusFilter(statusFilter === 'panne' ? 'all' : 'panne')} />
-        <PcKpi label="TAUX D'UTILISATION" value={utilMoy + '%'} sub="moy. engins actifs" delay={300} tone="ink" />
+      {/* KPI strip — refonte UX : 4 indicateurs (le total passe en sous-titre) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12 }}>
+        <PcKpi label="EN SERVICE" value={service} sub={`affectés chantier · ${total} au parc`} tone="green" delay={60} active={statusFilter === 'service'} onClick={() => setStatusFilter(statusFilter === 'service' ? 'all' : 'service')} />
+        <PcKpi label="DISPONIBLES" value={dispo} sub="au parc" tone="blue" delay={120} active={statusFilter === 'dispo'} onClick={() => setStatusFilter(statusFilter === 'dispo' ? 'all' : 'dispo')} />
+        <PcKpi label="IMMOBILISÉS" value={indispo} sub="maint. / panne" tone="red" delay={180} active={statusFilter === 'panne'} onClick={() => setStatusFilter(statusFilter === 'panne' ? 'all' : 'panne')} />
+        <PcKpi label="TAUX D'UTILISATION" value={utilMoy + '%'} sub="moy. engins actifs" delay={240} tone="ink" />
       </div>
 
       {/* Filters */}

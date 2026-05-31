@@ -184,13 +184,12 @@ function Stock() {
         </div>
       </div>
 
-      {/* KPI strip */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
-        <StKpi label="VALEUR DU STOCK" value={fmtMAD(valeur)} sub={`DH · ${depot === 'all' ? 'tous dépôts' : DEPOTS[depot].short}`} delay={60} tone="ink" />
+      {/* KPI strip — refonte UX : 4 indicateurs (densité réduite) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+        <StKpi label="VALEUR DU STOCK" value={fmtMAD(valeur)} sub={`DH · ${depot === 'all' ? 'tous dépôts' : DEPOTS[depot].short} · ${base.length} réf.`} delay={60} tone="ink" active={statusFilter === 'all'} onClick={() => setStatusFilter('all')} />
         <StKpi label="SOUS LE SEUIL" value={sousSeuil} sub="à réapprovisionner" tone="amber" delay={120} active={statusFilter === 'bas'} onClick={() => setStatusFilter(statusFilter === 'bas' ? 'all' : 'bas')} />
         <StKpi label="EN RUPTURE" value={ruptures} sub="commande urgente" tone="red" delay={180} active={statusFilter === 'rupture'} onClick={() => setStatusFilter(statusFilter === 'rupture' ? 'all' : 'rupture')} />
         <StKpi label="MOUVEMENTS — AUJOURD'HUI" value={movToday} sub="entrées / sorties" delay={240} />
-        <StKpi label="RÉFÉRENCES SUIVIES" value={base.length} sub="articles actifs" delay={300} active={statusFilter === 'all'} onClick={() => setStatusFilter('all')} />
       </div>
 
       {/* Dépôt tabs */}

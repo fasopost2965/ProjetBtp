@@ -208,32 +208,11 @@ function Ged() {
         </div>
       </div>
 
-      {/* View toggle */}
-      <div style={{ display: 'flex', gap: 4, background: TOKENS.bgWarm, borderRadius: 6, padding: 2, alignSelf: 'flex-start' }}>
-        {[['docs', 'Documents', 'folder'], ['hse', 'Audit HSE', 'shield']].map(([id, label, icon]) => {
-          const active = view === id;
-          return (
-            <button key={id} onClick={() => setView(id)} style={{
-              padding: '6px 14px', borderRadius: 4, border: 'none', cursor: 'pointer',
-              background: active ? TOKENS.paper : 'transparent',
-              color: active ? TOKENS.ink : TOKENS.ink3,
-              fontFamily: 'IBM Plex Sans', fontSize: 12, fontWeight: 500,
-              display: 'flex', alignItems: 'center', gap: 8,
-              boxShadow: active ? '0 1px 2px rgba(26,24,20,0.08)' : 'none',
-            }}>
-              <Icon name={icon} size={13} stroke={active ? TOKENS.ocreDeep : TOKENS.ink3} />
-              {label}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* KPI strip */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12 }}>
-        <GedKpi label="DOCUMENTS" value={totalDocs} unit="fichiers" sub="tous chantiers confondus" delay={60} tone="ink" />
-        <GedKpi label="STOCKAGE UTILISÉ" value="12,1" unit="Go / 50 Go" sub="24 % de l'espace" delay={120} />
-        <GedKpi label="À VALIDER" value="9" unit="documents" sub="plans en attente de visa" delay={180} tone="amber" />
-        <GedKpi label="AJOUTÉS CETTE SEMAINE" value="34" unit="fichiers" sub="dont 12 photos terrain" delay={240} tone="green" />
+      {/* KPI strip — refonte UX : 3 indicateurs (toggle redondant retiré, accès HSE via l'en-tête) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+        <GedKpi label="DOCUMENTS" value={totalDocs} unit="fichiers" sub={`tous chantiers · 12,1 Go / 50 Go`} delay={60} tone="ink" />
+        <GedKpi label="À VALIDER" value="9" unit="documents" sub="plans en attente de visa" delay={120} tone="amber" />
+        <GedKpi label="AJOUTÉS CETTE SEMAINE" value="34" unit="fichiers" sub="dont 12 photos terrain" delay={180} tone="green" />
       </div>
 
       {/* Browser */}

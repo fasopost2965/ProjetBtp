@@ -136,13 +136,12 @@ function SousTraitance() {
         </div>
       </div>
 
-      {/* KPI strip */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
-        <SstKpi label="CONTRATS ACTIFS" value={actifs} sub="en exécution" delay={60} active={tab === 'actifs'} onClick={() => setTab('actifs')} />
+      {/* KPI strip — refonte UX : 4 indicateurs (le montant sous-traité passe en sous-titre) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+        <SstKpi label="CONTRATS ACTIFS" value={actifs} sub={`en exécution · ${fmtMAD(engage)} DH engagés`} delay={60} active={tab === 'actifs'} onClick={() => setTab('actifs')} />
         <SstKpi label="EN ATTENTE D'AGRÉMENT" value={agrement} sub="DC4 à régulariser" tone="amber" delay={120} active={tab === 'agrement'} onClick={() => setTab('agrement')} />
         <SstKpi label="LITIGES OUVERTS" value={litiges} sub="action requise" tone="red" delay={180} active={tab === 'litige'} onClick={() => setTab('litige')} />
-        <SstKpi label="RETENUES DE GARANTIE" value={fmtMAD(retenues)} sub="DH retenus" tone="ocre" delay={240} />
-        <SstKpi label="MONTANT SOUS-TRAITÉ" value={fmtMAD(engage)} sub="DH HT engagés" delay={300} tone="ink" />
+        <SstKpi label="RETENUES DE GARANTIE" value={fmtMAD(retenues)} sub="DH retenus à libérer" tone="ocre" delay={240} />
       </div>
 
       {/* Filter bar */}
