@@ -581,14 +581,16 @@ Les wireframes ci-dessus de la **Vague 1** sont déclinés en maquettes HTML cli
 
 ## 6. Prochaines étapes
 
-- [x] **Vague 1 implémentée dans le code réel** (commits `refonte(...)`) :
+- [x] **Vague 1 implémentée** :
   - Facturation — 3 KPI cash + relance en 1 clic (RelanceModal).
   - Tableau de bord — bandeau « attention » + KPI cash sans sparklines, Tournée retirée.
   - Trésorerie — KPI 6→4, onglets 4→3, DSO/DPO/budget/rapprochement regroupés sous « Compta ».
   - Pointage — vue mobile terrain (présence par défaut, motif, CTA collant), filtres métier retirés.
+- [x] **Vague 2 implémentée** : Études simulateur express (3 questions) + Achats workflow 2 niveaux (KPI 5→3).
+- [x] **Correctifs retours utilisateur** : exercice comptable réglable (barre + Paramètres synchronisés), flux simulateur réparé, éditeur de devis/facture à lignes (ajout/modif/suppression de postes, totaux en direct).
+- [x] **Rapports** : moteur data-driven, 26 templates rendus, exports réels CSV/Excel/PDF (pagination A4).
+- [x] **Vague 3 implémentée** : densité réduite Stock / Parc / Sous-traitance / GED (KPI dégraissés, toggle HSE redondant retiré).
 - [ ] Valider ces écrans avec un utilisateur PME réel (un patron + un chef de chantier).
-- [ ] Vague 2 : Études express (3 questions) + Achats simplifiés (workflow 2 niveaux).
-- [ ] Définir le **mode mobile terrain** transverse (réception, photos, validation) sur le modèle du pointage.
-- [ ] Vague 3 : Stock, Parc, Sous-traitance, Rapports (renommage + dégraissage), GED.
+- [ ] Pistes restantes : aperçu A4 dans l'éditeur de devis · filtres de rapports (chantier/période) · mode mobile terrain transverse (réception, photos).
 
-*Document généré le 31/05/2026 — Vague 1 implémentée le 31/05/2026.*
+*Document généré le 31/05/2026 — Vagues 1, 2, 3 + gros chantiers implémentés le 31/05/2026.*
