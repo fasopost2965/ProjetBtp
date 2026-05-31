@@ -581,9 +581,14 @@ Les wireframes ci-dessus de la **Vague 1** sont déclinés en maquettes HTML cli
 
 ## 6. Prochaines étapes
 
-- [ ] Valider ces wireframes/maquettes avec un utilisateur PME réel (un patron + un chef de chantier).
-- [ ] Vague 2 : maquettes Études express + Achats simplifiés.
-- [ ] Définir le **mode mobile terrain** transverse (pointage, réception, photos, validation) comme app/parcours distinct de l'ERP bureau.
-- [ ] Puis industrialiser module par module, en commençant par Facturation (faible effort, fort impact).
+- [x] **Vague 1 implémentée dans le code réel** (commits `refonte(...)`) :
+  - Facturation — 3 KPI cash + relance en 1 clic (RelanceModal).
+  - Tableau de bord — bandeau « attention » + KPI cash sans sparklines, Tournée retirée.
+  - Trésorerie — KPI 6→4, onglets 4→3, DSO/DPO/budget/rapprochement regroupés sous « Compta ».
+  - Pointage — vue mobile terrain (présence par défaut, motif, CTA collant), filtres métier retirés.
+- [ ] Valider ces écrans avec un utilisateur PME réel (un patron + un chef de chantier).
+- [ ] Vague 2 : Études express (3 questions) + Achats simplifiés (workflow 2 niveaux).
+- [ ] Définir le **mode mobile terrain** transverse (réception, photos, validation) sur le modèle du pointage.
+- [ ] Vague 3 : Stock, Parc, Sous-traitance, Rapports (renommage + dégraissage), GED.
 
-*Document généré le 31/05/2026 — à valider avant implémentation technique.*
+*Document généré le 31/05/2026 — Vague 1 implémentée le 31/05/2026.*
