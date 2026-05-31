@@ -100,11 +100,49 @@ function Field({ label, value, mono, hint, half }) {
 const grid2 = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 };
 
 // -----------------------------------------------------------------------------
+function ExercicePanel() {
+  const years = ['2024', '2025', '2026'];
+  const [year, setYear] = React.useState(window.ATLAS_EXERCICE || '2026');
+  React.useEffect(() => {
+    const onChange = (e) => setYear(e.detail.year);
+    window.addEventListener('erp:exercice', onChange);
+    return () => window.removeEventListener('erp:exercice', onChange);
+  }, []);
+  const choose = (y) => {
+    window.ATLAS_EXERCICE = y;
+    window.dispatchEvent(new CustomEvent('erp:exercice', { detail: { year: y } }));
+    window.toast(`Exercice comptable ${y} activé`, 'success');
+  };
+  return (
+    <Panel title="Exercice comptable" desc="Année fiscale active — appliquée à toute l'application (barre supérieure, situations, rapports)" delay={80}>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        {years.map(y => (
+          <button key={y} onClick={() => choose(y)} style={{
+            padding: '10px 18px', borderRadius: 8, cursor: 'pointer',
+            border: `1px solid ${y === year ? TOKENS.ink : TOKENS.line2}`,
+            background: y === year ? TOKENS.ink : TOKENS.paper,
+            color: y === year ? TOKENS.bg : TOKENS.ink,
+            fontFamily: 'Manrope', fontWeight: 700, fontSize: 15, letterSpacing: '-0.01em',
+            display: 'flex', alignItems: 'center', gap: 8,
+          }}>
+            {y}
+            {y === year && <Icon name="check" size={14} stroke={TOKENS.bg} />}
+          </button>
+        ))}
+      </div>
+      <div style={{ marginTop: 12, fontFamily: 'IBM Plex Mono', fontSize: 10.5, color: TOKENS.ink3 }}>
+        Exercice courant : <span style={{ color: TOKENS.ocreDeep, fontWeight: 500 }}>{year}</span> · clôture au 31/12/{year}
+      </div>
+    </Panel>
+  );
+}
+
 function SocieteSection() {
   const [logo, setLogo]       = React.useState(null);
   const [favicon, setFavicon] = React.useState(null);
   return (
     <>
+      <ExercicePanel />
       <Panel title="Identité visuelle" desc="Logo de l'entreprise — utilisé sur les factures, devis, rapports PDF et le tableau de bord" delay={60} footer={false}>
         <LogoUpload value={logo} onChange={setLogo} label="Logo principal"
           help="Imprimé en entête des factures, devis et rapports — PNG ou SVG, fond transparent, 512×512 px" />

@@ -259,17 +259,7 @@ function Topbar({ breadcrumb, onMenuToggle, isMobile }) {
       </div>
 
       {/* Period / exercise */}
-      <button style={{
-        height: 34, padding: '0 12px',
-        background: TOKENS.paper, border: `1px solid ${TOKENS.line2}`, borderRadius: 6,
-        display: 'flex', alignItems: 'center', gap: 8,
-        cursor: 'pointer',
-        fontFamily: 'IBM Plex Sans', fontSize: 13, color: TOKENS.ink,
-      }}>
-        <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, color: TOKENS.ink3, letterSpacing: '0.08em' }}>EX.</span>
-        2026
-        <Icon name="chevronDown" size={13} stroke={TOKENS.ink3} />
-      </button>
+      <ExerciceSelector />
 
       {/* Notifications */}
       {window.NotificationBell && <window.NotificationBell />}
@@ -277,6 +267,75 @@ function Topbar({ breadcrumb, onMenuToggle, isMobile }) {
       {/* Quick action */}
       <NewMenu />
     </header>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// Exercice comptable — sélecteur synchronisé avec Paramètres (window.ATLAS_EXERCICE)
+// -----------------------------------------------------------------------------
+const EXERCICES = ['2024', '2025', '2026'];
+
+function getExercice() {
+  return window.ATLAS_EXERCICE || '2026';
+}
+function setExerciceGlobal(year) {
+  window.ATLAS_EXERCICE = year;
+  window.dispatchEvent(new CustomEvent('erp:exercice', { detail: { year } }));
+}
+
+function ExerciceSelector() {
+  const [year, setYear] = React.useState(getExercice());
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef(null);
+
+  React.useEffect(() => {
+    const onChange = (e) => setYear(e.detail.year);
+    window.addEventListener('erp:exercice', onChange);
+    return () => window.removeEventListener('erp:exercice', onChange);
+  }, []);
+  React.useEffect(() => {
+    const onClick = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, []);
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button onClick={() => setOpen(o => !o)} style={{
+        height: 34, padding: '0 12px',
+        background: TOKENS.paper, border: `1px solid ${TOKENS.line2}`, borderRadius: 6,
+        display: 'flex', alignItems: 'center', gap: 8,
+        cursor: 'pointer',
+        fontFamily: 'IBM Plex Sans', fontSize: 13, color: TOKENS.ink,
+      }}>
+        <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, color: TOKENS.ink3, letterSpacing: '0.08em' }}>EX.</span>
+        {year}
+        <Icon name="chevronDown" size={13} stroke={TOKENS.ink3} />
+      </button>
+      {open && (
+        <div style={{
+          position: 'absolute', top: 40, right: 0, minWidth: 140,
+          background: TOKENS.paper, border: `1px solid ${TOKENS.line}`, borderRadius: 8,
+          boxShadow: '0 12px 32px -12px rgba(26,24,20,0.25)', padding: 6, zIndex: 50,
+        }}>
+          <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 9, color: TOKENS.ink3, letterSpacing: '0.1em', padding: '4px 8px 6px' }}>
+            EXERCICE COMPTABLE
+          </div>
+          {EXERCICES.map(y => (
+            <button key={y} onClick={() => { setExerciceGlobal(y); setOpen(false); window.toast(`Exercice ${y} sélectionné`, 'info'); }} style={{
+              width: '100%', textAlign: 'left', padding: '8px 10px', borderRadius: 5,
+              border: 'none', cursor: 'pointer',
+              background: y === year ? TOKENS.bgWarm : 'transparent',
+              color: TOKENS.ink, fontFamily: 'IBM Plex Sans', fontSize: 13, fontWeight: y === year ? 600 : 400,
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            }}>
+              {y}
+              {y === year && <Icon name="check" size={13} stroke={TOKENS.ocreDeep} />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 

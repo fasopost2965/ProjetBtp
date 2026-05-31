@@ -57,6 +57,7 @@ const LOT_DEFINITIONS = [
 function Etudes() {
   const [view, setView] = React.useState('hub'); // 'hub' | 'simulator'
   const [createOpen, setCreateOpen] = React.useState(false);
+  const [seed, setSeed] = React.useState(null); // valeurs pré-remplies depuis la modale
 
   React.useEffect(() => {
     const h = (e) => { if (e.detail?.key === 'newQuote') setCreateOpen(true); };
@@ -64,10 +65,23 @@ function Etudes() {
     return () => window.removeEventListener('erp:new', h);
   }, []);
 
+  // Flux corrigé : la modale "Nouveau devis" ouvre réellement le bon outil
+  React.useEffect(() => {
+    const h = (e) => {
+      const { method, form } = e.detail || {};
+      if (method === 'simulator' || method === 'bpu') {
+        setSeed(form || null);
+        setView('simulator');
+      }
+    };
+    window.addEventListener('erp:openDevis', h);
+    return () => window.removeEventListener('erp:openDevis', h);
+  }, []);
+
   return (
     <>
       {view === 'simulator'
-        ? <Simulator onBack={() => setView('hub')} />
+        ? <Simulator onBack={() => { setView('hub'); setSeed(null); }} seed={seed} />
         : <DevisHub onSimulate={() => setView('simulator')} onNew={() => setCreateOpen(true)} />}
       {createOpen && <window.NewDevisModal onClose={() => setCreateOpen(false)} />}
     </>
@@ -370,11 +384,11 @@ function ConversionFlow() {
 // SIMULATOR EXPRESS — 2-minute project cost estimator
 // =============================================================================
 
-function Simulator({ onBack }) {
-  const [project, setProject] = React.useState('villa-r1');
-  const [surface, setSurface] = React.useState(280);
+function Simulator({ onBack, seed }) {
+  const [project, setProject] = React.useState(seed?.type || 'villa-r1');
+  const [surface, setSurface] = React.useState(seed?.surface || 280);
   const [region, setRegion] = React.useState('casa');
-  const [finit, setFinit] = React.useState('std');
+  const [finit, setFinit] = React.useState(seed?.finit || 'std');
   const [lots, setLots] = React.useState(LOT_DEFINITIONS.map(l => l.id));
   const [margin, setMargin] = React.useState(15);
   const [duration, setDuration] = React.useState(14);
@@ -800,21 +814,24 @@ function SimResult({ pType, surface, region, finit, lotBreakdown, directCost, fc
         <ActionTile
           delay={360}
           kind="DV"
-          title="Sauvegarder en brouillon"
-          desc="Conserver cette simulation pour la finaliser plus tard."
+          title="Enregistrer le devis"
+          desc="Conserver cette estimation comme devis (statut brouillon)."
+          onClick={() => { window.toast('Devis enregistré', 'success', `${pType.label} · ${fmtMAD(ht)} DH HT`); setTimeout(onBack, 700); }}
         />
         <ActionTile
           delay={400}
           kind="BPU"
-          title="Convertir en BPU détaillé"
-          desc="Détailler ligne par ligne avec sous-détail de prix."
+          title="Détailler en BPU"
+          desc="Ouvrir l'éditeur ligne par ligne pré-rempli avec ces postes."
           ocre
+          onClick={() => window.dispatchEvent(new CustomEvent('erp:openBPU', { detail: { project, surface, ht } }))}
         />
         <ActionTile
           delay={440}
           kind="CH"
           title="Lancer en chantier"
           desc="Ouvrir directement un chantier avec ce budget."
+          onClick={() => { window.toast('Chantier ouvert depuis l\'estimation', 'success', `${pType.label} · ${fmtMAD(ht)} DH HT`); setTimeout(() => { window.location.hash = 'sites'; }, 700); }}
         />
       </div>
 
@@ -832,9 +849,9 @@ function SimResult({ pType, surface, region, finit, lotBreakdown, directCost, fc
 }
 
 // -----------------------------------------------------------------------------
-function ActionTile({ kind, title, desc, ocre, delay }) {
+function ActionTile({ kind, title, desc, ocre, delay, onClick }) {
   return (
-    <Card hoverable delay={delay} padding={18} style={{
+    <Card hoverable delay={delay} padding={18} onClick={onClick} style={{
       background: ocre ? TOKENS.ink : TOKENS.paper,
       borderColor: ocre ? TOKENS.ink : TOKENS.line,
       cursor: 'pointer',

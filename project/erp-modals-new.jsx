@@ -124,10 +124,15 @@ function NewDevisModal({ onClose }) {
       window.toast('Intitulé et client requis', 'error'); return;
     }
     onClose();
+    // Naviguer vers Études puis ouvrir le bon outil selon la méthode choisie
+    if (window.location.hash !== '#etudes') window.location.hash = 'etudes';
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('erp:openDevis', { detail: { method: form.method, form } }));
+    }, 60);
     if (form.method === 'simulator') {
-      window.toast('Devis créé — ouverture du simulateur', 'success', form.name);
+      window.toast('Ouverture du simulateur', 'success', form.name);
     } else if (form.method === 'bpu') {
-      window.toast('Devis BPU créé — édition ligne par ligne', 'success', form.name);
+      window.toast('Ouverture de l\'éditeur BPU', 'success', form.name);
     } else {
       window.toast('Devis créé depuis modèle', 'success', form.name);
     }
