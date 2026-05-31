@@ -59,6 +59,8 @@ function Facturation() {
   const [previewFact, setPreviewFact] = React.useState(null);
   const [convertDevis, setConvertDevis] = React.useState(null);
   const [convertedNums, setConvertedNums] = React.useState([]);
+  const [relanceTarget, setRelanceTarget] = React.useState(null);
+  const [relancedNums, setRelancedNums] = React.useState([]);
 
   React.useEffect(() => {
     const h = (e) => {
@@ -82,12 +84,11 @@ function Facturation() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
       <Header onNouveauDevis={() => setNewDevis(true)} onNouvelleFacture={() => setNewFact(true)} />
 
-      {/* KPI strip — 4 chiffres clés pour le patron */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
-        <BigKpi label="ENCAISSÉ — MAI 2026"  value={fmtMAD(encaisseMois)} unit="DH TTC" sub={`${FACTURES.filter(f => f.status === 'encaisse' && f.encaisseLe?.startsWith('2026-05')).length} règlements reçus`} delay={60} tone="green" />
-        <BigKpi label="EN ATTENTE D'ENCAISSEMENT" value={fmtMAD(enAttente)} unit="DH TTC" sub={`${FACTURES.filter(f => f.status !== 'encaisse').length} factures en cours`} delay={120} tone="ink" />
-        <BigKpi label="EN RETARD DE PAIEMENT"  value={fmtMAD(enRetard)}  unit="DH TTC" sub={`${nbRetard} facture${nbRetard > 1 ? 's' : ''} à relancer`} delay={180} tone={nbRetard ? 'red' : 'neutral'} alert={nbRetard > 0} onClick={() => { setTab('factures'); setFilter('retards'); }} />
-        <BigKpi label="À ENCAISSER SOUS 7 J"  value={fmtMAD(aEchoir7j)} unit="DH TTC" sub={`${nbAEchoir} échéance${nbAEchoir > 1 ? 's' : ''} cette semaine`} delay={240} tone="amber" onClick={() => { setTab('factures'); setFilter('aechoir'); }} />
+      {/* KPI strip — 3 chiffres cash (refonte UX : moins, c'est plus) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+        <BigKpi label="ENCAISSÉ — CE MOIS"  value={fmtMAD(encaisseMois)} unit="DH TTC" sub={`${FACTURES.filter(f => f.status === 'encaisse' && f.encaisseLe?.startsWith('2026-05')).length} règlements reçus`} delay={60} tone="green" />
+        <BigKpi label="EN ATTENTE" value={fmtMAD(enAttente)} unit="DH TTC" sub={`${FACTURES.filter(f => f.status !== 'encaisse').length} factures · dont ${nbAEchoir} à échoir sous 7 j`} delay={120} tone="ink" onClick={() => { setTab('factures'); setFilter('aechoir'); }} />
+        <BigKpi label="EN RETARD"  value={fmtMAD(enRetard)}  unit="DH TTC" sub={`${nbRetard} facture${nbRetard > 1 ? 's' : ''} à relancer`} delay={180} tone={nbRetard ? 'red' : 'neutral'} alert={nbRetard > 0} onClick={() => { setTab('factures'); setFilter('retards'); }} />
       </div>
 
       {/* Pipeline visuel */}
@@ -115,7 +116,7 @@ function Facturation() {
       {/* Content area */}
       <div style={{ display: 'grid', gridTemplateColumns: selected ? 'minmax(0, 1fr) minmax(0, 340px)' : '1fr', gap: 16 }}>
         <div>
-          {tab === 'factures' && <FacturesList filter={filter} setFilter={setFilter} selected={selected} onSelect={setSelected} />}
+          {tab === 'factures' && <FacturesList filter={filter} setFilter={setFilter} selected={selected} onSelect={setSelected} onRelance={setRelanceTarget} relancedNums={relancedNums} />}
           {tab === 'devis'    && <DevisList convertedNums={convertedNums} onConvert={setConvertDevis} />}
           {tab === 'encaisse' && <EncaissementsView />}
         </div>
@@ -135,6 +136,17 @@ function Facturation() {
             setConvertDevis(null);
             setTab('factures');
             window.toast(`Facture ${newNum} créée`, 'success', `${convertDevis.client} · ${fmtMAD(convertDevis.montantHT * 1.2)} DH TTC`);
+          }}
+        />
+      )}
+      {relanceTarget && (
+        <RelanceModal
+          facture={relanceTarget}
+          onClose={() => setRelanceTarget(null)}
+          onSend={(canal) => {
+            setRelancedNums(p => [...p, relanceTarget.num]);
+            setRelanceTarget(null);
+            window.toast('Relance envoyée', 'success', `${relanceTarget.client} · ${canal}`);
           }}
         />
       )}
@@ -277,7 +289,7 @@ function Pipeline() {
 }
 
 // -----------------------------------------------------------------------------
-function FacturesList({ filter, setFilter, selected, onSelect }) {
+function FacturesList({ filter, setFilter, selected, onSelect, onRelance, relancedNums = [] }) {
   let rows = FACTURES.slice();
   if (filter === 'retards')  rows = rows.filter(f => f.status === 'relance2' || f.status === 'relance3');
   if (filter === 'aechoir')  rows = rows.filter(f => f.status === 'emise');
@@ -315,14 +327,15 @@ function FacturesList({ filter, setFilter, selected, onSelect }) {
         const isSel = selected?.num === f.num;
         const isLate = f.status === 'relance1' || f.status === 'relance2' || f.status === 'relance3';
         const isDueSoon = f.status === 'emise' && daysAgo(f.echeance) > -7;
+        const isRelanced = relancedNums.includes(f.num);
         return (
-          <button key={f.num} onClick={() => onSelect(f)} className="erp-row" style={{
+          <div key={f.num} role="button" tabIndex={0} onClick={() => onSelect(f)} className="erp-row" style={{
             width: '100%', textAlign: 'left', border: 'none',
             background: isSel ? TOKENS.bgWarm : 'transparent',
             borderBottom: i < rows.length - 1 ? `1px solid ${TOKENS.line}` : 'none',
             borderLeft: isSel ? `3px solid ${TOKENS.ocreDeep}` : '3px solid transparent',
             padding: '14px 18px', cursor: 'pointer',
-            display: 'grid', gridTemplateColumns: 'minmax(100px, 120px) minmax(0, 1fr) minmax(120px, 150px)', gap: 14, alignItems: 'center',
+            display: 'grid', gridTemplateColumns: 'minmax(100px, 120px) minmax(0, 1fr) minmax(140px, 170px)', gap: 14, alignItems: 'center',
           }}>
             {/* Col 1: num + date */}
             <div style={{ minWidth: 0 }}>
@@ -360,23 +373,93 @@ function FacturesList({ filter, setFilter, selected, onSelect }) {
                 )}
               </div>
             </div>
-            {/* Col 3: montant */}
+            {/* Col 3: montant + action */}
             <div style={{ textAlign: 'right' }}>
               <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 14, color: TOKENS.ink, fontWeight: 600 }}>
                 {fmtMAD(f.montantHT * 1.2)}
               </div>
               <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, color: TOKENS.ink3, marginTop: 3 }}>
-                DH TTC
+                DH TTC · HT {fmtMAD(f.montantHT)}
               </div>
-              <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, color: TOKENS.ink4, marginTop: 1 }}>
-                HT {fmtMAD(f.montantHT)}
-              </div>
+              {isLate && onRelance && (
+                <div style={{ marginTop: 8 }}>
+                  {isRelanced ? (
+                    <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, color: TOKENS.green }}>✓ relancée</span>
+                  ) : (
+                    <Button size="sm" variant="ocre" onClick={(e) => { e.stopPropagation(); onRelance(f); }}>
+                      Relancer
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
-          </button>
+          </div>
         );
       })}
     </Card>
   );
+}
+
+// ─── Relance facture (refonte UX : action directe sur les retards) ────────────
+function RelanceModal({ facture, onClose, onSend }) {
+  const { Modal } = window;
+  const [canal, setCanal] = React.useState('Email');
+  const ttc = facture.montantHT * 1.2;
+  const message = `Objet : Relance amiable — facture ${facture.num}\n\nBonjour,\n\nSauf erreur de notre part, la facture ${facture.num} d'un montant de ${fmtMAD(ttc)} DH TTC (${facture.chantier}) demeure impayée à ce jour. Nous vous remercions de bien vouloir procéder à son règlement dans les meilleurs délais.\n\nCordialement,\nAtlas Constructions S.A.`;
+  return (
+    <Modal open onClose={onClose}
+      title="Relancer le client"
+      subtitle={`${facture.num} · ${facture.client}`}
+      width={540}
+      footer={<>
+        <Button onClick={onClose}>Annuler</Button>
+        <Button variant="primary" icon={<Icon name="arrowRight" size={13} stroke={TOKENS.bg} />} onClick={() => onSend(canal)}>
+          Envoyer la relance
+        </Button>
+      </>}
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ padding: 14, background: TOKENS.redSoft, borderRadius: 8, border: `1px solid ${TOKENS.red}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, color: TOKENS.red, letterSpacing: '0.08em' }}>MONTANT DÛ</div>
+            <div style={{ fontFamily: 'Manrope', fontWeight: 700, fontSize: 22, color: TOKENS.ink, marginTop: 2 }}>{fmtMAD(ttc)} <span style={{ fontSize: 11, fontFamily: 'IBM Plex Mono', color: TOKENS.ink3 }}>DH TTC</span></div>
+          </div>
+          {f_joursRetard(facture) != null && (
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontFamily: 'Manrope', fontWeight: 700, fontSize: 18, color: TOKENS.red }}>+{f_joursRetard(facture)} j</div>
+              <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, color: TOKENS.ink3 }}>de retard</div>
+            </div>
+          )}
+        </div>
+        <div>
+          <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, color: TOKENS.ink3, letterSpacing: '0.08em', marginBottom: 8 }}>CANAL DE RELANCE</div>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {['Email', 'SMS', 'WhatsApp', 'Courrier'].map(c => (
+              <button key={c} onClick={() => setCanal(c)} style={{
+                flex: 1, padding: '8px 6px', borderRadius: 6, cursor: 'pointer',
+                border: `1px solid ${canal === c ? TOKENS.ocreDeep : TOKENS.line2}`,
+                background: canal === c ? TOKENS.ocreSoft : TOKENS.paper,
+                color: canal === c ? TOKENS.ocreDeep : TOKENS.ink2,
+                fontFamily: 'IBM Plex Sans', fontSize: 12, fontWeight: 500,
+              }}>{c}</button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, color: TOKENS.ink3, letterSpacing: '0.08em', marginBottom: 8 }}>MESSAGE (MODÈLE)</div>
+          <div style={{ padding: 12, background: TOKENS.bg, border: `1px solid ${TOKENS.line}`, borderRadius: 6, fontSize: 12, color: TOKENS.ink2, whiteSpace: 'pre-wrap', lineHeight: 1.55, maxHeight: 180, overflow: 'auto' }}>
+            {message}
+          </div>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function f_joursRetard(f) {
+  if (f.joursRetard != null) return f.joursRetard;
+  const d = daysAgo(f.echeance);
+  return d > 0 ? d : null;
 }
 
 // -----------------------------------------------------------------------------
