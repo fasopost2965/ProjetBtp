@@ -56,11 +56,123 @@ const RECENTS = [
   { name: 'Avenant n°2 — délai', chantier: 'RBT-208', by: 'Direction', date: '2026-05-26', kind: 'pdf' },
 ];
 
+const VERSION_HISTORY = {
+  'PLAN-COFF-B3-niv4-indC.dwg': [
+    { ver: 'C', date: '2026-05-26', by: 'Hicham Lahlou', note: 'Modification aciers poteaux P12-P28', size: '3,1 Mo' },
+    { ver: 'B', date: '2026-05-10', by: 'BET Tazi',      note: 'Correction alignement axes',           size: '2,9 Mo' },
+    { ver: 'A', date: '2026-04-22', by: 'BET Tazi',      note: 'Version initiale',                     size: '2,8 Mo' },
+  ],
+  'PLAN-FERR-poteaux-P12-P28.pdf': [
+    { ver: 'B', date: '2026-05-24', by: 'BET Tazi', note: 'Ajout ferraillage escaliers', size: '1,8 Mo' },
+    { ver: 'A', date: '2026-05-05', by: 'BET Tazi', note: 'Version initiale',            size: '1,6 Mo' },
+  ],
+};
+
+function UploadModal({ onClose }) {
+  const { Modal, FieldGroup, TextInput, Select } = window;
+  const [form, setForm] = React.useState({
+    chantier: 'CSB-114', categorie: 'plans', indice: 'A', commentaire: '',
+  });
+  const upd = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const [file, setFile] = React.useState(null);
+
+  return (
+    <Modal open onClose={onClose}
+      title="Téléverser un document"
+      subtitle="Le fichier sera versionné automatiquement si une version précédente existe."
+      width={560}
+      footer={<>
+        <Button onClick={onClose}>Annuler</Button>
+        <Button variant="primary"
+          onClick={() => { onClose(); window.toast('Document déposé', 'success', file?.name || 'fichier · ind. ' + form.indice); }}
+          icon={<Icon name="arrowUp" size={13} stroke={TOKENS.bg} />}>
+          Téléverser
+        </Button>
+      </>}
+    >
+      <div style={{ border: `2px dashed ${TOKENS.line2}`, borderRadius: 8, padding: 28, textAlign: 'center', cursor: 'pointer', marginBottom: 4,
+        background: file ? TOKENS.greenSoft : TOKENS.bg, transition: 'background 150ms ease' }}
+        onClick={() => document.getElementById('ged-file-input')?.click()}>
+        <input id="ged-file-input" type="file" style={{ display: 'none' }}
+          onChange={e => setFile(e.target.files?.[0] || null)} />
+        {file ? (
+          <>
+            <Icon name="doc" size={28} stroke={TOKENS.green} />
+            <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 12, color: TOKENS.green, marginTop: 10, fontWeight: 600 }}>{file.name}</div>
+            <div style={{ fontSize: 11, color: TOKENS.ink3, marginTop: 4 }}>{(file.size / 1024).toFixed(0)} Ko — cliquer pour changer</div>
+          </>
+        ) : (
+          <>
+            <Icon name="arrowUp" size={28} stroke={TOKENS.ink3} />
+            <div style={{ fontSize: 13, color: TOKENS.ink3, marginTop: 10 }}>Glisser-déposer ou cliquer pour sélectionner</div>
+            <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 10.5, color: TOKENS.ink4, marginTop: 4 }}>PDF · DWG · DXF · XLS · JPG · PNG</div>
+          </>
+        )}
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 4 }}>
+        <FieldGroup label="Chantier">
+          <Select value={form.chantier} onChange={(v) => upd('chantier', v)} options={['CSB-114','RBT-208','TNG-061','AGD-033','SOCIÉTÉ']} />
+        </FieldGroup>
+        <FieldGroup label="Catégorie">
+          <Select value={form.categorie} onChange={(v) => upd('categorie', v)} options={[
+            ['plans','Plans & DAO'],['marche','Marché & admin.'],['pv','PV & CR'],['photos','Photos'],['qse','QSE & sécurité'],
+          ]} />
+        </FieldGroup>
+        <FieldGroup label="Indice / Version">
+          <TextInput value={form.indice} onChange={(v) => upd('indice', v)} placeholder="A" mono />
+        </FieldGroup>
+        <FieldGroup label="Commentaire de version">
+          <TextInput value={form.commentaire} onChange={(v) => upd('commentaire', v)} placeholder="Modification…" />
+        </FieldGroup>
+      </div>
+    </Modal>
+  );
+}
+
+function VersionDrawer({ file, onClose }) {
+  const { Drawer } = window;
+  const history = VERSION_HISTORY[file.name] || [{ ver: file.ver, date: file.date, by: file.by, note: 'Version actuelle', size: file.size }];
+  const km = KIND_META[file.kind];
+  return (
+    <Drawer open onClose={onClose} title="Historique des versions" subtitle={file.name}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+        {history.map((v, i) => (
+          <div key={v.ver} style={{ padding: '14px 0', borderBottom: i < history.length - 1 ? `1px solid ${TOKENS.line}` : 'none',
+            display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+            <div style={{ width: 34, height: 34, borderRadius: 5, flexShrink: 0, background: i === 0 ? km.color + '20' : TOKENS.bgWarm,
+              color: i === 0 ? km.color : TOKENS.ink3,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'IBM Plex Mono', fontSize: 11, fontWeight: 700 }}>
+              {v.ver}
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+                <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: TOKENS.ink, fontWeight: 600 }}>Indice {v.ver}</span>
+                {i === 0 && <Pill tone="green" dot>Actuel</Pill>}
+              </div>
+              <div style={{ fontSize: 12, color: TOKENS.ink2, marginBottom: 4 }}>{v.note}</div>
+              <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, color: TOKENS.ink3 }}>
+                {fmtD(v.date)} · {v.by} · {v.size}
+              </div>
+            </div>
+            <Button size="sm" icon={<Icon name="arrowDown" size={11} stroke={TOKENS.ink2} />}
+              onClick={() => window.toast(`Téléchargement ind. ${v.ver}`, 'info', file.name)}>
+              DL
+            </Button>
+          </div>
+        ))}
+      </div>
+    </Drawer>
+  );
+}
+
 // -----------------------------------------------------------------------------
 function Ged() {
   const [view, setView] = React.useState('docs'); // 'docs' | 'hse'
   const [site, setSite] = React.useState('csb');
   const [folder, setFolder] = React.useState('plans');
+  const [q, setQ] = React.useState('');
+  const [uploadOpen, setUploadOpen] = React.useState(false);
+  const [versionFile, setVersionFile] = React.useState(null);
 
   if (view === 'hse' && window.GedHseAudit) {
     return <window.GedHseAudit onBack={() => setView('docs')} />;
@@ -68,7 +180,8 @@ function Ged() {
 
   const totalDocs = TREE.reduce((s, t) => s + t.count, 0);
   const folders = FOLDERS[site] || FOLDERS.csb;
-  const files = FILES[folder] || FILES.plans;
+  const allFiles = FILES[folder] || FILES.plans;
+  const files = q ? allFiles.filter(f => (f.name + f.by).toLowerCase().includes(q.toLowerCase())) : allFiles;
   const currentSite = TREE.find(t => t.id === site) || TREE[0];
 
   return (
@@ -87,12 +200,11 @@ function Ged() {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <Button icon={<Icon name="search" size={13} stroke={TOKENS.ink2} />}>Rechercher</Button>
           <Button onClick={() => setView('hse')}
             icon={<Icon name="shield" size={13} stroke={TOKENS.ink2} />}>
             Audit HSE
           </Button>
-          <Button variant="primary" icon={<Icon name="arrowUp" size={13} stroke={TOKENS.bg} />}>Téléverser</Button>
+          <Button variant="primary" onClick={() => setUploadOpen(true)} icon={<Icon name="arrowUp" size={13} stroke={TOKENS.bg} />}>Téléverser</Button>
         </div>
       </div>
 
@@ -185,19 +297,33 @@ function Ged() {
 
           {/* File list */}
           <Card padding={0} delay={380}>
+            <div style={{ padding: '10px 18px', borderBottom: `1px solid ${TOKENS.line}`, display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div className="erp-search" style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px', height: 34,
+                background: TOKENS.bg, border: `1px solid ${TOKENS.line}`, borderRadius: 5 }}>
+                <Icon name="search" size={13} stroke={TOKENS.ink3} />
+                <input value={q} onChange={e => setQ(e.target.value)} placeholder="Rechercher un fichier…"
+                  style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: 12.5 }} />
+                {q && <button onClick={() => setQ('')} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: TOKENS.ink3, padding: 0, lineHeight: 1 }}>
+                  <Icon name="x" size={12} />
+                </button>}
+              </div>
+              <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, color: TOKENS.ink3 }}>{files.length} fichier{files.length > 1 ? 's' : ''}</span>
+            </div>
             <div style={{
-              display: 'grid', gridTemplateColumns: '1fr 90px 130px 110px 110px',
+              display: 'grid', gridTemplateColumns: '1fr 90px 130px 80px 110px 80px',
               padding: '10px 18px', background: TOKENS.bg, borderBottom: `1px solid ${TOKENS.line}`,
               fontFamily: 'IBM Plex Mono', fontSize: 9.5, color: TOKENS.ink3, letterSpacing: '0.06em', textTransform: 'uppercase',
             }}>
-              <span>Fichier</span><span>Indice</span><span>Modifié par</span><span style={{ textAlign: 'right' }}>Taille</span><span style={{ textAlign: 'right' }}>Statut</span>
+              <span>Fichier</span><span>Indice</span><span>Modifié par</span><span style={{ textAlign: 'right' }}>Taille</span><span style={{ textAlign: 'right' }}>Statut</span><span></span>
             </div>
-            {files.map((f, i) => {
+            {files.length === 0 ? (
+              <div style={{ padding: '32px 18px', textAlign: 'center', color: TOKENS.ink3, fontSize: 13 }}>Aucun fichier pour «&nbsp;{q}&nbsp;»</div>
+            ) : files.map((f, i) => {
               const km = KIND_META[f.kind];
               const st = DOC_STATUS[f.status];
               return (
                 <div key={f.name} className="erp-row" style={{
-                  display: 'grid', gridTemplateColumns: '1fr 90px 130px 110px 110px',
+                  display: 'grid', gridTemplateColumns: '1fr 90px 130px 80px 110px 80px',
                   padding: '12px 18px', borderBottom: i < files.length - 1 ? `1px solid ${TOKENS.line}` : 'none', alignItems: 'center',
                   opacity: f.status === 'obsolete' ? 0.6 : 1,
                 }}>
@@ -217,6 +343,16 @@ function Ged() {
                   <span style={{ fontSize: 11.5, color: TOKENS.ink2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.by}</span>
                   <span style={{ textAlign: 'right', fontFamily: 'IBM Plex Mono', fontSize: 11, color: TOKENS.ink3 }}>{f.size}</span>
                   <span style={{ textAlign: 'right' }}><Pill tone={st.tone} dot={f.status !== 'obsolete'}>{st.label}</Pill></span>
+                  <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+                    <button className="erp-icon-btn" onClick={() => window.toast('Téléchargement', 'info', f.name)}
+                      style={{ width: 28, height: 28, borderRadius: 4, border: 'none', cursor: 'pointer', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Icon name="arrowDown" size={13} stroke={TOKENS.ink3} />
+                    </button>
+                    <button className="erp-icon-btn" onClick={() => setVersionFile(f)}
+                      style={{ width: 28, height: 28, borderRadius: 4, border: 'none', cursor: 'pointer', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Icon name="refresh" size={13} stroke={TOKENS.ink3} />
+                    </button>
+                  </div>
                 </div>
               );
             })}
@@ -246,6 +382,9 @@ function Ged() {
           );
         })}
       </Card>
+
+      {uploadOpen && <UploadModal onClose={() => setUploadOpen(false)} />}
+      {versionFile && <VersionDrawer file={versionFile} onClose={() => setVersionFile(null)} />}
     </div>
   );
 }
