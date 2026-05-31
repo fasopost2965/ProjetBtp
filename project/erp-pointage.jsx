@@ -53,6 +53,9 @@ const METIER_LABELS = {
   engin:      { label: 'Conducteurs d\'engins', color: TOKENS.green },
 };
 
+// Motifs d'absence saisissables (refonte UX — saisie réelle du motif)
+const MOTIFS = ['maladie', 'congé', 'absent injustifié', 'accident travail'];
+
 // -----------------------------------------------------------------------------
 function Pointage() {
   const [siteCode, setSiteCode] = React.useState('CSB-114');
@@ -63,14 +66,19 @@ function Pointage() {
   const [locked, setLocked]     = React.useState(false);
 
   const site = POINTAGE_SITES.find(s => s.code === siteCode);
+  const bp = window.useBreakpoint ? window.useBreakpoint() : { mobile: false, tablet: false, desktop: true };
 
   const toggle = (id) => {
     if (locked) return;
-    setTeam(t => t.map(o => o.id === id ? { ...o, present: !o.present, h: !o.present ? 9 : 0, hSup: !o.present ? 0 : 0, motif: !o.present ? null : 'absent' } : o));
+    setTeam(t => t.map(o => o.id === id ? { ...o, present: !o.present, h: !o.present ? 9 : 0, hSup: !o.present ? 0 : 0, motif: !o.present ? null : 'maladie' } : o));
   };
   const updateH = (id, key, value) => {
     if (locked) return;
     setTeam(t => t.map(o => o.id === id ? { ...o, [key]: Math.max(0, +value || 0) } : o));
+  };
+  const setMotif = (id, motif) => {
+    if (locked) return;
+    setTeam(t => t.map(o => o.id === id ? { ...o, motif } : o));
   };
 
   // Filtering
@@ -86,6 +94,16 @@ function Pointage() {
   const hTotalN = team.reduce((s, o) => s + o.h, 0);
   const hTotalS = team.reduce((s, o) => s + o.hSup, 0);
   const coutJour = team.reduce((s, o) => s + (o.h * o.salaire) + (o.hSup * o.salaire * 1.25), 0);
+
+  // Refonte UX — sur mobile/tablette, vue terrain simplifiée (présence par défaut)
+  if (bp.mobile) {
+    return (
+      <MobilePointage
+        site={site} date={date} team={team} present={present} absent={absent}
+        locked={locked} onToggle={toggle} onMotif={setMotif} onLock={() => setLocked(true)} onUnlock={() => setLocked(false)}
+      />
+    );
+  }
 
   // Group by métier
   const grouped = {};
@@ -170,7 +188,7 @@ function Pointage() {
           sub="MO directe HT" />
       </div>
 
-      {/* Filter chips */}
+      {/* Filter chips — refonte UX : filtres métier retirés de la saisie (usage RH only) */}
       <div className="erp-fade-in" style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', gap: 4 }}>
           {[
@@ -178,34 +196,13 @@ function Pointage() {
             ['present', `Présents · ${present}`],
             ['absent', `Absents · ${absent}`],
           ].map(([id, label]) => (
-            <button key={id} onClick={() => { setFilter(id); setActiveMetier(null); }} style={{
+            <button key={id} onClick={() => setFilter(id)} style={{
               padding: '7px 12px', borderRadius: 5, cursor: 'pointer',
-              background: filter === id && !activeMetier ? TOKENS.ink : TOKENS.bgWarm,
-              color: filter === id && !activeMetier ? TOKENS.bg : TOKENS.ink2,
+              background: filter === id ? TOKENS.ink : TOKENS.bgWarm,
+              color: filter === id ? TOKENS.bg : TOKENS.ink2,
               border: 'none', fontFamily: 'IBM Plex Sans', fontSize: 12, fontWeight: 500,
             }}>{label}</button>
           ))}
-        </div>
-        <div style={{ width: 1, height: 22, background: TOKENS.line }} />
-        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-          {Object.entries(METIER_LABELS).map(([id, m]) => {
-            const count = team.filter(o => o.metier === id).length;
-            const active = activeMetier === id;
-            return (
-              <button key={id} onClick={() => { setActiveMetier(active ? null : id); setFilter(active ? 'all' : 'metier'); }} style={{
-                padding: '7px 11px', borderRadius: 5, cursor: 'pointer',
-                background: active ? TOKENS.bgWarm : 'transparent',
-                color: active ? TOKENS.ink : TOKENS.ink2,
-                border: `1px solid ${active ? m.color : 'transparent'}`,
-                fontFamily: 'IBM Plex Sans', fontSize: 12, fontWeight: 500,
-                display: 'flex', alignItems: 'center', gap: 7,
-              }}>
-                <span style={{ width: 8, height: 8, borderRadius: 2, background: m.color }} />
-                {m.label}
-                <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, color: TOKENS.ink3 }}>{count}</span>
-              </button>
-            );
-          })}
         </div>
       </div>
 
@@ -440,6 +437,114 @@ function LockedBanner({ onUnlock }) {
       <Button size="sm" onClick={onUnlock}>Déverrouiller</Button>
     </div>
   );
+}
+
+// -----------------------------------------------------------------------------
+// Refonte UX — vue terrain mobile : présence par défaut, marquer les absents
+function MobilePointage({ site, date, team, present, absent, locked, onToggle, onMotif, onLock, onUnlock }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 0, position: 'relative', paddingBottom: 80 }}>
+      {/* En-tête compact */}
+      <div className="erp-fade-in" style={{
+        position: 'sticky', top: 0, zIndex: 2, background: TOKENS.paper,
+        borderBottom: `1px solid ${TOKENS.line}`, padding: '14px 16px', margin: '-4px -4px 0',
+      }}>
+        <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, color: TOKENS.ocreDeep, letterSpacing: '0.12em' }}>
+          POINTAGE DU JOUR
+        </div>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 4 }}>
+          <h1 style={{ fontFamily: 'Manrope', fontWeight: 700, fontSize: 19, margin: 0, letterSpacing: '-0.02em' }}>{site.code}</h1>
+          <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: TOKENS.ink3 }}>{date}</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+          <span style={{ fontFamily: 'Manrope', fontWeight: 700, fontSize: 22, color: TOKENS.green, letterSpacing: '-0.02em' }}>{present}</span>
+          <span style={{ fontSize: 13, color: TOKENS.ink3 }}>/ {team.length} présents</span>
+          {absent > 0 && <span style={{ marginLeft: 'auto' }}><Pill tone="red" dot>{absent} absent{absent > 1 ? 's' : ''}</Pill></span>}
+        </div>
+      </div>
+
+      {locked && (
+        <div style={{ margin: '14px 0 4px' }}><LockedBanner onUnlock={onUnlock} /></div>
+      )}
+
+      <div style={{ fontSize: 11.5, color: TOKENS.ink3, padding: '12px 4px 8px', lineHeight: 1.4 }}>
+        Tout le monde est <b style={{ color: TOKENS.green }}>présent</b> par défaut — marquez seulement les absents.
+      </div>
+
+      {/* Cartes ouvriers */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {team.map((o) => {
+          const abs = !o.present;
+          return (
+            <div key={o.id} className="erp-fade-in" style={{
+              background: TOKENS.paper, border: `1px solid ${abs ? TOKENS.redSoft : TOKENS.line}`,
+              borderLeft: `4px solid ${abs ? TOKENS.red : TOKENS.green}`, borderRadius: 10, padding: '12px 14px',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{
+                  width: 40, height: 40, borderRadius: 999, flexShrink: 0,
+                  background: abs ? TOKENS.redSoft : TOKENS.ocreSoft, color: abs ? TOKENS.red : TOKENS.ocreDeep,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontFamily: 'Manrope', fontWeight: 700, fontSize: 13,
+                }}>
+                  {o.name.split(' ').slice(0, 2).map(p => p[0]).join('')}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, color: TOKENS.ink, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{o.name}</div>
+                  <div style={{ fontSize: 11.5, color: TOKENS.ink3, marginTop: 1 }}>{o.poste}</div>
+                </div>
+                <button onClick={() => onToggle(o.id)} disabled={locked} style={{
+                  border: 'none', borderRadius: 999, padding: '9px 15px', flexShrink: 0,
+                  cursor: locked ? 'not-allowed' : 'pointer', opacity: locked ? 0.5 : 1,
+                  background: abs ? TOKENS.redSoft : TOKENS.greenSoft, color: abs ? TOKENS.red : TOKENS.green,
+                  fontFamily: 'IBM Plex Sans', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap',
+                }}>
+                  {abs ? '✗ Absent' : '✓ Présent'}
+                </button>
+              </div>
+              {abs && (
+                <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, color: TOKENS.ink3, letterSpacing: '0.06em' }}>MOTIF</span>
+                  <select value={o.motif || 'maladie'} disabled={locked}
+                    onChange={(e) => onMotif(o.id, e.target.value)}
+                    style={{
+                      flex: 1, height: 34, padding: '0 10px', borderRadius: 6,
+                      border: `1px solid ${TOKENS.line2}`, background: TOKENS.bg,
+                      fontFamily: 'IBM Plex Sans', fontSize: 12.5, color: TOKENS.ink, outline: 'none',
+                    }}>
+                    {MOTIFS.map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* CTA collant */}
+      <div style={{
+        position: 'fixed', left: 0, right: 0, bottom: 0, padding: '12px 16px',
+        background: `linear-gradient(transparent, ${TOKENS.bg} 35%)`, zIndex: 5,
+      }}>
+        {locked ? (
+          <button onClick={onUnlock} style={ctaStyle(TOKENS.green)}>✓ Pointage clôturé — déverrouiller</button>
+        ) : (
+          <button onClick={onLock} style={ctaStyle(TOKENS.ink)}>
+            CLÔTURER{absent > 0 ? ` · ${absent} absent${absent > 1 ? 's' : ''}` : ''}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ctaStyle(bg) {
+  return {
+    width: '100%', padding: '15px', border: 'none', borderRadius: 12,
+    background: bg, color: TOKENS.bg, cursor: 'pointer',
+    fontFamily: 'Manrope', fontWeight: 700, fontSize: 14, letterSpacing: '0.01em',
+    boxShadow: '0 8px 24px -8px rgba(26,24,20,0.4)',
+  };
 }
 
 Object.assign(window, { Pointage });
