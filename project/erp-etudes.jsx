@@ -58,6 +58,7 @@ function Etudes() {
   const [view, setView] = React.useState('hub'); // 'hub' | 'simulator'
   const [createOpen, setCreateOpen] = React.useState(false);
   const [seed, setSeed] = React.useState(null); // valeurs pré-remplies depuis la modale
+  const [editorSeed, setEditorSeed] = React.useState(null); // ouvre l'éditeur de lignes
 
   React.useEffect(() => {
     const h = (e) => { if (e.detail?.key === 'newQuote') setCreateOpen(true); };
@@ -69,7 +70,10 @@ function Etudes() {
   React.useEffect(() => {
     const h = (e) => {
       const { method, form } = e.detail || {};
-      if (method === 'simulator' || method === 'bpu') {
+      if (method === 'bpu') {
+        // éditeur de lignes pré-rempli avec le projet
+        setEditorSeed({ client: form?.client, name: form?.name });
+      } else if (method === 'simulator') {
         setSeed(form || null);
         setView('simulator');
       }
@@ -78,12 +82,31 @@ function Etudes() {
     return () => window.removeEventListener('erp:openDevis', h);
   }, []);
 
+  // Le simulateur peut basculer vers l'éditeur de lignes ("Détailler en BPU")
+  React.useEffect(() => {
+    const h = (e) => {
+      const d = e.detail || {};
+      const pt = PROJECT_TYPES.find(p => p.id === d.project);
+      setEditorSeed({
+        name: pt ? `${pt.label} — ${d.surface} ${pt.unit}` : '',
+        lignes: pt ? [
+          { designation: `${pt.label} — gros œuvre`, unit: pt.unit, qte: d.surface || 1, pu: pt.base.gros },
+          { designation: `${pt.label} — second œuvre`, unit: pt.unit, qte: d.surface || 1, pu: pt.base.sec },
+          { designation: `${pt.label} — finitions`, unit: pt.unit, qte: d.surface || 1, pu: pt.base.finit },
+        ] : null,
+      });
+    };
+    window.addEventListener('erp:openBPU', h);
+    return () => window.removeEventListener('erp:openBPU', h);
+  }, []);
+
   return (
     <>
       {view === 'simulator'
         ? <Simulator onBack={() => { setView('hub'); setSeed(null); }} seed={seed} />
-        : <DevisHub onSimulate={() => setView('simulator')} onNew={() => setCreateOpen(true)} />}
+        : <DevisHub onSimulate={() => setView('simulator')} onNew={() => setCreateOpen(true)} onEdit={(s) => setEditorSeed(s || {})} />}
       {createOpen && <window.NewDevisModal onClose={() => setCreateOpen(false)} />}
+      {editorSeed && window.DevisEditor && <window.DevisEditor kind="devis" seed={editorSeed} onClose={() => setEditorSeed(null)} />}
     </>
   );
 }
@@ -91,7 +114,7 @@ function Etudes() {
 // -----------------------------------------------------------------------------
 // HUB — Devis list + entry points
 // -----------------------------------------------------------------------------
-function DevisHub({ onSimulate, onNew }) {
+function DevisHub({ onSimulate, onNew, onEdit }) {
   const [filter, setFilter] = React.useState('all');
   const [preview, setPreview] = React.useState(null);
   const [convertTarget, setConvertTarget] = React.useState(null);
@@ -136,10 +159,10 @@ function DevisHub({ onSimulate, onNew }) {
         <EntryCard
           eyebrow="MÉTHODE COMPLÈTE"
           title="Nouveau devis BPU"
-          desc="Bordereau de prix unitaire détaillé poste par poste avec sous-détail (déboursé, FC, FG, marge)."
+          desc="Bordereau de prix unitaire détaillé poste par poste : ajoutez, modifiez et supprimez vos lignes, totaux recalculés en direct."
           cta="Créer un devis"
           delay={120}
-          onClick={onNew}
+          onClick={() => onEdit && onEdit({})}
         />
         <EntryCard
           eyebrow="DEPUIS UN EXISTANT"

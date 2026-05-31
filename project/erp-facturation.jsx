@@ -124,7 +124,9 @@ function Facturation() {
       </div>
 
       {newDevis && <window.NewDevisModal onClose={() => setNewDevis(false)} />}
-      {newFact && <window.NewFactureModal onClose={() => setNewFact(false)} />}
+      {newFact && (window.DevisEditor
+        ? <window.DevisEditor kind="facture" onClose={() => setNewFact(false)} />
+        : <window.NewFactureModal onClose={() => setNewFact(false)} />)}
       {previewFact && <window.FactureDocPreview facture={previewFact} onClose={() => setPreviewFact(null)} />}
       {convertDevis && (
         <ConvertDevisModal
